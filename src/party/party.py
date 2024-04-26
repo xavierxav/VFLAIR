@@ -7,13 +7,9 @@ sys.path.append(os.pardir)
 import torch
 from torch.utils.data import DataLoader
 
-from evaluates.attacks.attack_api import AttackerLoader
-from evaluates.defenses.defense_api import DefenderLoader
 from load.LoadDataset import load_dataset_per_party, load_dataset_per_party_backdoor,load_dataset_per_party_noisysample
 from load.LoadModels import load_models_per_party
 
-from utils.noisy_label_functions import add_noise
-from utils.noisy_sample_functions import noisy_sample
 from utils.basic_functions import cross_entropy_for_onehot, tf_distance_cov_cor,pairwise_dist
 from utils.communication_protocol_funcs import Cache
 
@@ -186,13 +182,15 @@ class Party(object):
             self.global_model_optimizer,
         ) = load_models_per_party(args, index)
 
-    # def prepare_attacker(self, args, index):
-    #     if index in args.attack_configs['party']:
-    #         self.attacker = AttackerLoader(args, index, self.local_model)
+    if 0 == 1:
+        # def prepare_attacker(self, args, index):
+        #     if index in args.attack_configs['party']:
+        #         self.attacker = AttackerLoader(args, index, self.local_model)
 
-    # def prepare_defender(self, args, index):
-    #     if index in args.attack_configs['party']:
-    #         self.defender = DefenderLoader(args, index)
+        # def prepare_defender(self, args, index):
+        #     if index in args.attack_configs['party']:
+        #         self.defender = DefenderLoader(args, index)
+        i=0
     
     def give_current_lr(self):
         return (self.local_model_optimizer.state_dict()['param_groups'][0]['lr'])
@@ -210,31 +208,32 @@ class Party(object):
         # args.local_model()
         pass
 
-    # def local_backward(self):
-    #     # update local model
-    #     self.local_model_optimizer.zero_grad()
-    #     # ########## for passive local mid loss (start) ##########
-    #     # if passive party in defense party, do
-    #     if (
-    #         self.args.apply_mid == True
-    #         and (self.index in self.args.defense_configs["party"])
-    #         and (self.index < self.args.k - 1)
-    #         ):
-    #         # get grad for local_model.mid_model.parameters()
-    #         self.local_model.mid_loss.backward(retain_graph=True)
-    #         self.local_model.mid_loss = torch.empty((1, 1)).to(self.args.device)
-    #     # ########## for passive local mid loss (end) ##########
-    #     self.weights_grad_a = torch.autograd.grad(
-    #         self.local_pred,
-    #         self.local_model.parameters(),
-    #         grad_outputs=self.local_gradient,
-    #         retain_graph=True,
-    #     )
-    #     for w, g in zip(self.local_model.parameters(), self.weights_grad_a):
-    #         if w.requires_grad:
-    #             w.grad = g.detach()
-    #     self.local_model_optimizer.step()
-
+    if 0 == 1:
+        # def local_backward(self):
+        #     # update local model
+        #     self.local_model_optimizer.zero_grad()
+        #     # ########## for passive local mid loss (start) ##########
+        #     # if passive party in defense party, do
+        #     if (
+        #         self.args.apply_mid == True
+        #         and (self.index in self.args.defense_configs["party"])
+        #         and (self.index < self.args.k - 1)
+        #         ):
+        #         # get grad for local_model.mid_model.parameters()
+        #         self.local_model.mid_loss.backward(retain_graph=True)
+        #         self.local_model.mid_loss = torch.empty((1, 1)).to(self.args.device)
+        #     # ########## for passive local mid loss (end) ##########
+        #     self.weights_grad_a = torch.autograd.grad(
+        #         self.local_pred,
+        #         self.local_model.parameters(),
+        #         grad_outputs=self.local_gradient,
+        #         retain_graph=True,
+        #     )
+        #     for w, g in zip(self.local_model.parameters(), self.weights_grad_a):
+        #         if w.requires_grad:
+        #             w.grad = g.detach()
+        #     self.local_model_optimizer.step()
+        i=0
 
     def local_backward(self,weight=None):
         self.num_local_updates += 1 # another update

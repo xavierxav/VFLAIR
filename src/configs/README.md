@@ -44,13 +44,13 @@
             "type": "MLP2",
             "input_dim": 392,
             "output_dim": 10,
-            "path": "random_14*28_10"
+            "path": "random_14x28_10"
         },
         "1": {
             "type": "MLP2",
             "input_dim": 392,
             "output_dim": 10,
-            "path": "random_14*28_10"
+            "path": "random_14x28_10"
         },
         "apply_trainable_layer": 0,
         "global_model": "ClassificationModelHostHead"

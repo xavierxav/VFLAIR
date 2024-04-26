@@ -18,8 +18,6 @@ import tensorflow as tf
 from load.LoadConfigs import * #load_configs
 from load.LoadParty import load_parties
 from evaluates.MainTaskVFL import *
-from evaluates.MainTaskVFLwithBackdoor import *
-from evaluates.MainTaskVFLwithNoisySample import *
 from utils.basic_functions import append_exp_res
 import warnings
 warnings.filterwarnings("ignore")
@@ -205,7 +203,6 @@ def evaluate_label_inference(args):
                 print(exp_result)
                 append_exp_res(args.exp_res_path, exp_result)
 
-
 def evaluate_attribute_inference(args):
     for index in args.attribute_inference_index:
         set_seed(args.current_seed)
@@ -234,7 +231,6 @@ def evaluate_attribute_inference(args):
                 (args.k,args.batch_size, args.main_lr, args.num_classes, args.Q, args.apply_trainable_layer,args.main_epochs)
             print(exp_result)
             append_exp_res(args.exp_res_path, exp_result)
-
 
 def evaluate_untargeted_backdoor(args):
     for index in args.untargeted_backdoor_index:
@@ -327,7 +323,7 @@ if __name__ == '__main__':
     parser.add_argument('--device', type=str, default='cuda', help='use gpu or cpu')
     parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
     parser.add_argument('--seed', type=int, default=97, help='random seed')
-    parser.add_argument('--configs', type=str, default='test', help='configure json file path')
+    parser.add_argument('--configs', type=str, default='basic_configs', help='configure json file path')
     parser.add_argument('--save_model', type=bool, default=False, help='whether to save the trained model')
     args = parser.parse_args()
 

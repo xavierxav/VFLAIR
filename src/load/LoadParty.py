@@ -3,8 +3,6 @@ sys.path.append(os.pardir)
 
 from party.passive_party import PassiveParty
 from party.active_party import ActiveParty
-from party.paillier_passive_party import PaillierPassiveParty
-from party.paillier_active_party import PaillierActiveParty
 
 def load_parties(args):
     # party 0,1,2,...,args.k-2||,args,k-1

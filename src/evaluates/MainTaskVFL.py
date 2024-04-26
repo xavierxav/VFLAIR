@@ -17,15 +17,7 @@ from utils.basic_functions import cross_entropy_for_onehot, append_exp_res, mult
 from utils.communication_protocol_funcs import get_size_of
 
 # from evaluates.attacks.attack_api import apply_attack
-from evaluates.defenses.defense_api import apply_defense
-from evaluates.defenses.defense_functions import *
-from utils.constants import *
-import utils.constants as shared_var
-from utils.marvell_functions import KL_gradient_perturb
-from utils.noisy_label_functions import add_noise
-from utils.noisy_sample_functions import noisy_sample
 from utils.communication_protocol_funcs import compress_pred,Cache,ins_weight
-from evaluates.attacks.attack_api import AttackerLoader
 
 
 tf.compat.v1.enable_eager_execution() 
@@ -97,8 +89,7 @@ class MainTaskVFL(object):
         self.num_update_per_batch = args.num_update_per_batch
         self.num_batch_per_workset = args.Q #args.num_batch_per_workset
         self.max_staleness = self.num_update_per_batch*self.num_batch_per_workset 
-
-    
+  
     def pred_transmit(self): # Active party gets pred from passive parties
         for ik in range(self.k):
             pred, pred_detach = self.parties[ik].give_pred()
@@ -321,13 +312,10 @@ class MainTaskVFL(object):
         early_stop_count = 0
         LR_passive_list = []
         LR_active_list = []
-
         self.num_total_comms = 0
         total_time = 0.0
         flag = 0
         self.current_epoch = 0
-
-
         start_time = time.time()
         for i_epoch in range(self.epochs):
             self.current_epoch = i_epoch
@@ -389,9 +377,9 @@ class MainTaskVFL(object):
             #         print('Launch Label Inference Attack, Only train 1 epoch')
             #         break    
 
-            # self.trained_models = self.save_state(True)
-            # if self.args.save_model == True:
-            #     self.save_trained_models()
+            self.trained_models = self.save_state(True)
+            if self.args.save_model == True:
+                self.save_trained_models()
 
             # LR decay
             self.LR_Decay(i_epoch)
@@ -469,6 +457,7 @@ class MainTaskVFL(object):
                             missing_list = list(set(missing_list_total))
                             noise_sample_cnt += len(missing_list)
                             noise_suc_cnt += torch.sum(predict_label[missing_list] == actual_label[missing_list]).item()
+                            if 1 == 0:
                             # print(f"this epoch, noise sample count is {len(missing_list)}, correct noise sample count is {torch.sum(predict_label[missing_list] == actual_label[missing_list]).item()}")
                             # noise_gt_val_one_hot_label = gt_val_one_hot_label[missing_list]
 
@@ -497,6 +486,7 @@ class MainTaskVFL(object):
                         #     noise_actual_label = torch.argmax(noise_gt_val_one_hot_label, dim=-1)
                         #     noise_sample_cnt += noise_predict_label.shape[0]
                         #     noise_suc_cnt += torch.sum(noise_predict_label == noise_actual_label).item()
+                                print('display')
 
                     self.noise_test_acc = noise_suc_cnt / float(noise_sample_cnt) if noise_sample_cnt>0 else None
                     self.test_acc = suc_cnt / float(sample_cnt)
@@ -510,8 +500,8 @@ class MainTaskVFL(object):
                     if self.noise_test_acc != None:
                         postfix['noisy_sample_acc'] = '{:2f}%'.format(self.noise_test_acc * 100)
                     # tqdm_train.set_postfix(postfix)
-                    print('Epoch {}% \t train_loss:{:.2f} train_acc:{:.2f} test_acc:{:.2f} test_auc:{:.2f}'.format(
-                        i_epoch, self.loss, self.train_acc, self.test_acc, self.test_auc))
+                    print('Epoch {:.2f}% \t train_loss:{:.4f} train_acc:{:.4f} test_acc:{:.4f} test_auc:{:.4f}'.format(
+                        i_epoch/self.epochs*100, self.loss, self.train_acc, self.test_acc, self.test_auc))
                     if self.noise_test_acc != None:
                         print('noisy_sample_acc:{:.2f}'.format(self.noise_test_acc))
                     
@@ -525,9 +515,6 @@ class MainTaskVFL(object):
             return self.test_acc, self.noise_test_acc
 
         return self.test_acc,self.stopping_iter,self.stopping_time,self.stopping_commu_cost
-
-
-
 
     def train_graph(self):
         test_acc = 0.0
@@ -700,7 +687,6 @@ class MainTaskVFL(object):
             return self.test_acc,self.noise_test_acc
         return self.test_acc,self.stopping_iter,self.stopping_time
 
-
     def save_state(self, BEFORE_MODEL_UPDATE=True):
         if BEFORE_MODEL_UPDATE:
             return {
@@ -743,8 +729,7 @@ class MainTaskVFL(object):
             "batchsize": self.args.batch_size,
             "num_classes": self.args.num_classes
         }
-        
-        
+               
     def save_trained_models(self):
         dir_path = self.exp_res_dir + f'trained_models/parties{self.k}_topmodel{self.args.apply_trainable_layer}_epoch{self.epochs}/'
         if not os.path.exists(dir_path):

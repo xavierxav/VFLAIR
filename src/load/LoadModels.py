@@ -8,7 +8,6 @@ import pickle
 from models.bottom_models import *
 from models.global_models import *
 from models.autoencoder import *
-from utils.optimizers import MaliciousSGD, MaliciousAdam
 
 def create_model(bottom_model, ema=False, size_bottom_out=10, num_classes=10):
     model = BottomModelPlus(bottom_model,size_bottom_out, num_classes,
