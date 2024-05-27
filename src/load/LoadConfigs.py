@@ -3,21 +3,13 @@ sys.path.append(os.pardir)
 import math
 import json
 import argparse
+import copy
 from models.autoencoder import AutoEncoder
 
-TARGETED_BACKDOOR = ['ReplacementBackdoor','ASB']
-UNTARGETED_BACKDOOR = ['NoisyLabel','MissingFeature','NoisySample']
-LABEL_INFERENCE = ['BatchLabelReconstruction','DirectLabelScoring','NormbasedScoring',\
-'DirectionbasedScoring','PassiveModelCompletion','ActiveModelCompletion']
-ATTRIBUTE_INFERENCE = ['AttributeInference']
-FEATURE_INFERENCE = ['GenerativeRegressionNetwork','ResSFL']
 
 communication_protocol_list = ['FedSGD','FedBCD_p','FedBCD_s','CELU','Quantization','Topk']
 
-def load_basic_configs(config_file_name, args):
-    config_file_path = './configs/'+config_file_name+'.json'
-    config_file = open(config_file_path,"r")
-    config_dict = json.load(config_file)
+def load_basic_configs(config_dict, args):
     # print(config_dict)
     
     # args.main_lr, learning rate for main task
@@ -98,12 +90,6 @@ def load_basic_configs(config_file_name, args):
                         temp = {'type':model_type_name, 'path':'../models/'+model_type_name+'/random'}
                         model_dict[str(ik)] = temp
                 else:
-                    # if 'path' in config_model_dict[str(ik)]:
-                    #     model_type_name = config_model_dict[str(ik)]['path'].split('/')[-2]
-                    #     temp = {'type':model_type_name, 'path':config_model_dict[str(ik)]['path']}
-                    #     model_dict[str(ik)] = temp
-                    # else:
-                    #     model_dict[str(ik)] = default_dict_element
                     model_dict[str(ik)] = default_dict_element
             else:
                 model_dict[str(ik)] = default_dict_element
@@ -118,139 +104,9 @@ def load_basic_configs(config_file_name, args):
         args.model_list = default_model_dict
         args.apply_trainable_layer = 0
         args.global_model = 'ClassificationModelHostHead'
-    
-    # Check: Centralized Training
-    if args.k ==1 :
-        print('k=1, Launch Centralized Training, All Attack&Defense dismissed, Q set to 1')
-        args.apply_attack = False # bli/ns/ds attack
-        args.apply_backdoor = False # replacement backdoor attack
-        args.apply_nl = False # noisy label attack
-        args.apply_ns = False # noisy sample attack
-        args.apply_mf = False # missing feature attack
-        args.apply_defense = False
-        args.apply_mid = False
-        args.apply_cae = False
-        args.apply_dcae = False
-        args.apply_dp = False
-        args.Q=1
-        # return args
 
-    # if defense appears
-    args.apply_defense = False
-    args.apply_dp = False
-    args.apply_mid = False # mid defense
-    args.apply_cae = False # cae defense
-    args.apply_dcae = False # dcae defense
-    args.apply_adversarial = False # adversarial
-    args.bin_size = [None for _ in range(args.k)] # for discrete bins
-    args.gradients_res_a = [None for _ in range(args.k)] # for gradient sparsification
-    args.apply_dcor = False # distance corrilation
-    if 'defense' in config_dict:
-        print(config_dict['defense'].keys())
-        if 'name' in config_dict['defense']:
-            args.apply_defense = True
-            args.defense_name = config_dict['defense']['name']
-            args.defense_configs = config_dict['defense']['parameters'] if('parameters' in config_dict['defense']) else None
-            assert 'party' in config_dict['defense']['parameters'], '[Error] Defense party not specified'
-            print(f"in load configs, defense_configs is type {type(args.defense_configs)}")
-            print(f"in load configs, defense_configs is type {type(dict(args.defense_configs))}")
-            if 'mid' in args.defense_name.casefold():
-                args.apply_mid = True
-            elif 'cae' in args.defense_name.casefold():
-                args.apply_cae = True
-                if 'dcae' in args.defense_name.casefold():
-                    args.apply_dcae = True
-            elif 'adversarial' in args.defense_name.casefold():
-                args.apply_adversarial = True
-            elif 'distancecorrelation' in args.defense_name.casefold():
-                args.apply_dcor = True
-            elif ('gaussian' in args.defense_name.casefold()) or ('laplace' in args.defense_name.casefold()):
-                args.apply_dp = True
-        else:
-            assert 'name' in config_dict['defense'], "missing defense name"
-    else:
-        args.defense_name = 'None'
-        args.defense_configs = None
-        print('===== No Defense ======')
-    # get Info: args.defense_param  args.defense_param_name
-    if args.apply_defense == True:
-        if args.defense_name in ["CAE", "DCAE", "MID", "DistanceCorrelation", "AdversarialTraining"]:
-            args.defense_param = args.defense_configs['lambda']
-            args.defense_param_name = 'lambda'
-        elif args.defense_name == "GaussianDP" or args.defense_name=="LaplaceDP":
-            args.defense_param = args.defense_configs['dp_strength']
-            args.defense_param_name = 'dp_strength'
-        elif args.defense_name == "GradientSparsification":
-            args.defense_param = args.defense_configs['gradient_sparse_rate']
-            args.defense_param_name = 'gradient_sparse_rate'
-        elif args.defense_name == "GradPerturb":
-            args.defense_param = args.defense_configs['perturb_epsilon']
-            args.defense_param_name = 'perturb_epsilon'
-        else:
-            args.defense_param = 'None'
-            args.defense_param_name = 'No_Defense'
-    else:
-        args.defense_param = 'None'
-        args.defense_param_name = 'No_Defense'
-    
-    # Detail Specifications about defense_name
-    if args.defense_name=="MID":
-        if args.defense_configs['party'] == [0]:
-            args.defense_name="MID_Passive"
-        else:
-            args.defense_name="MID_Active"
+    return [args]
 
-
-    # if there's attack   Mark attack type
-    args.attack_num = 0
-    args.targeted_backdoor_list = []
-    args.targeted_backdoor_index = []
-    args.untargeted_backdoor_list = []
-    args.untargeted_backdoor_index = []
-    args.label_inference_list = []
-    args.label_inference_index = []
-    args.attribute_inference_list = []
-    args.attribute_inference_index = []
-    args.feature_inference_list = []
-    args.feature_inference_index = []
-    args.apply_attack = False
-    if 'attack_list' in config_dict:
-        if len(config_dict['attack_list'])>0:
-            attack_config_dict = config_dict['attack_list']
-            args.attack_num = len(attack_config_dict)
-            args.apply_attack = True
-            for ik in range(args.attack_num):
-                if 'name' in attack_config_dict[str(ik)]:
-                    _name = attack_config_dict[str(ik)]['name']
-                    if _name in TARGETED_BACKDOOR:
-                        args.targeted_backdoor_list.append(_name)
-                        args.targeted_backdoor_index.append(ik)
-                    
-                    elif _name in UNTARGETED_BACKDOOR:
-                        args.untargeted_backdoor_list.append(_name)
-                        args.untargeted_backdoor_index.append(ik)
-                    
-                    elif _name in LABEL_INFERENCE:
-                        args.label_inference_list.append(_name)
-                        args.label_inference_index.append(ik)
-
-                    elif _name in ATTRIBUTE_INFERENCE:
-                        args.attribute_inference_list.append(_name)
-                        args.attribute_inference_index.append(ik)
-
-                    elif _name in FEATURE_INFERENCE:
-                        args.feature_inference_list.append(_name)
-                        args.feature_inference_index.append(ik)
-                else:
-                    assert 'name' in attack_config_dict[str(ik)], 'missing attack name'
-        else:
-            assert len(config_dict['attack_list'])>0, 'empty attack_list'
-    else:
-        print('===== No Attack ======')
-    
-    return args   
-
-def load_attack_configs(config_file_name, args, index):
     '''
     load attack[index] in attack_list
     '''
@@ -344,21 +200,3 @@ def load_attack_configs(config_file_name, args, index):
         args.Q=1
 
     return args
-
-def init_attack_defense(args):
-    args.apply_attack = False 
-    args.apply_backdoor = False # replacement backdoor attack
-    args.apply_nl = False # noisy label attack
-    args.apply_ns = False # noisy sample attack
-    args.apply_mf = False # missing feature attack
-    args.apply_defense = False
-    args.apply_mid = False
-    args.apply_cae = False
-    args.apply_dcae = False
-    args.apply_dp = False
-    return args
-    
-
-
-if __name__ == '__main__':
-    pass

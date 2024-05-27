@@ -18,10 +18,8 @@ import math
 import threading
 
 def get_size_of(target_tensor):
-    _size = 1
-    for _dim in target_tensor.shape:
-        _size = _size*_dim
-    return _size*4/(1024*1024) # MB
+    total_bytes = target_tensor.numel() * target_tensor.element_size()
+    return total_bytes*4/(1024*1024) # MB
     
 # CELU
 class Cache(object):
@@ -104,8 +102,6 @@ def compress_pred( args, pred , local_grad,  epoch ,step ):
 
     return pred 
 
-
-
 def quantize_vector(x, quant_min=0, quant_max=1, quant_level=5, dim=2):
     """Uniform vector quantization approach
 
@@ -147,7 +143,6 @@ def quantize_vector(x, quant_min=0, quant_max=1, quant_level=5, dim=2):
     # Move out of 0,1 range:
     x_normalize = np.max(x)*(x_normalize - dither)
     return torch.from_numpy(x_normalize).float()
-
 
 def quantize_scalar(x, quant_min=0, quant_max=1, quant_level=5):
     """Uniform quantization approach

@@ -1,13 +1,13 @@
 {
-    "epochs": 3,
-    "lr": 0.005,
+    "epochs":3,
+    "lr": 0.01,
     "k": 2,
-    "compare_centralized": false,
-    "compare_single": false,
-    "batch_size": 256,
+    "batch_size": 512,
+    "compare_centralized": true,
+    "compare_single": true,
     "communication":{
-        "communication_protocol": "FedSGD",
-        "iteration_per_aggregation": 1
+        "communication_protocol": "FedBCD_p",
+        "iteration_per_aggregation": 5
     },
     "dataset":{
         "dataset_name": "credit",

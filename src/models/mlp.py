@@ -194,6 +194,7 @@ class MLP4(nn.Module):
             nn.ReLU(),
             nn.Linear(64, output_dim)
         )
+        self.input_dim = input_dim
 
     def forward(self, x):
         out = self.layer(x)

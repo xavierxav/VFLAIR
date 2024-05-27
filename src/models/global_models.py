@@ -34,7 +34,6 @@ class TopModelForCifar10(nn.Module):
         x = self.fc4top(F.relu(self.bn3top(x)))
         return F.log_softmax(x, dim=1)
 
-
 class ClassificationModelHostHead(nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -44,7 +43,6 @@ class ClassificationModelHostHead(nn.Module):
         for i in range(len(z_list)-1):
             out = out.add(z_list[i+1])
         return out
-
 
 class ClassificationModelHostHeadWithSoftmax(nn.Module):
 
@@ -58,8 +56,6 @@ class ClassificationModelHostHeadWithSoftmax(nn.Module):
             out = out.add(z_list[i+1])
         return self.softmax(out)
 
-
-
 class ClassificationModelHostTrainableHead(nn.Module):
 
     def __init__(self, hidden_dim, num_classes):
@@ -69,7 +65,6 @@ class ClassificationModelHostTrainableHead(nn.Module):
     def forward(self,  z_list):
         out = torch.cat(z_list, dim=1)
         return self.classifier_head(out)
-
 
 class ClassificationModelHostTrainableHead2(nn.Module):
 
@@ -85,7 +80,6 @@ class ClassificationModelHostTrainableHead2(nn.Module):
         x = self.fc2_top(x)
         x = F.relu(x)
         return x
-
 
 class ClassificationModelHostTrainableHead3(nn.Module):
 
