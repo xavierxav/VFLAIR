@@ -1,0 +1,28 @@
+{
+    "epochs": 15,
+    "lr": 0.003,
+    "k": 1,
+    "compare_centralized": false,
+    "compare_single": false,
+    "batch_size": 128,
+    "communication":{
+        "communication_protocol": "FedSGD",
+        "iteration_per_aggregation": 1
+    },
+    "dataset":{
+        "dataset_name": "satellite",
+        "num_classes": 4,
+        "data_root": "C:/Users/XD278777/Desktop/worldstrat/dataset",
+        "features_instead": false
+    },
+    "data_root": "C:/Users/XD278777/Desktop/worldstrat/dataset",
+    "model_list":{
+        "0": {
+            "type": "SatelliteCNN",
+            "input_dim": 25600,
+            "output_dim": 10
+        },
+        "apply_trainable_layer": 1,
+        "global_model": "ClassificationModelHostTrainableHead"
+    }
+}

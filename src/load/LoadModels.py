@@ -1,37 +1,9 @@
 import sys, os
 sys.path.append(os.pardir)
 
-import argparse
-import numpy as np
-import pickle
-
 from models.bottom_models import *
 from models.global_models import *
 from models.autoencoder import *
-
-def create_model(bottom_model, ema=False, size_bottom_out=10, num_classes=10):
-    model = BottomModelPlus(bottom_model,size_bottom_out, num_classes,
-                                num_layer=2,
-                                activation_func_type='ReLU',
-                                use_bn=0)
-    model = model
-
-    if ema:
-        for param in model.parameters():
-            param.detach_()
-
-    return model
-
-
-def load_models(args):
-    args.net_list = [None] * args.k
-    for ik in range(args.k):
-        current_model_type = args.model_list[str(ik)]['type']
-        current_model_path = args.model_list[str(ik)]['path']
-        args.net_list[ik] = pickle.load(open('.././src/models/model_parameters/'+current_model_type+'/'+current_model_path+'.pkl',"rb"))
-        args.net_list[ik] = args.net_list[ik].to(args.device)
-    # important
-    return args
 
 def load_basic_models(args,index):
     current_model_type = args.model_list[str(index)]['type']
@@ -72,16 +44,4 @@ def load_basic_models(args,index):
             # print(f"use SGD for global optimizer for PMC checking")
             # global_model_optimizer = torch.optim.SGD(list(global_model.parameters()), lr=args.main_lr, momentum=0.9, weight_decay=5e-4)
 
-    return args, local_model, local_model_optimizer, global_model, global_model_optimizer
-
-def load_defense_models(args, index, local_model, local_model_optimizer, global_model, global_model_optimizer):
-    print('Load Defense models')
-    # no defense at all, set some variables as None
-    args.encoder = None
-    return args, local_model, local_model_optimizer, global_model, global_model_optimizer
-
-def load_models_per_party(args, index):
-    args, local_model, local_model_optimizer, global_model, global_model_optimizer = load_basic_models(args,index)
-    args, local_model, local_model_optimizer, global_model, global_model_optimizer = load_defense_models(args, index, local_model, local_model_optimizer, global_model, global_model_optimizer)
-    # important
-    return args, local_model, local_model_optimizer, global_model, global_model_optimizer
+    return local_model, local_model_optimizer, global_model, global_model_optimizer

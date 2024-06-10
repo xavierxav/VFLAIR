@@ -1,23 +1,16 @@
 import os
-import sys
 import numpy as np
-import time
+import pandas as pd
 
 import random
-import logging
 import argparse
 import torch
-# import torch.nn as nn
-# import torchvision.transforms as transforms
-# from torchvision import datasets
-# import torch.utils
-# import torch.backends.cudnn as cudnn
-# from tensorboardX import SummaryWriter
 
 from load.LoadConfigs import * #load_configs
 from load.LoadParty import load_parties
 from evaluates.MainTaskVFL import *
 from utils.basic_functions import plot_model_performance
+from sklearn.model_selection import train_test_split
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -52,7 +45,7 @@ if __name__ == '__main__':
     parser.add_argument('--device', type=str, default='cuda', help='use gpu or cpu')
     parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
     parser.add_argument('--seed', type=int, default=97, help='random seed')
-    parser.add_argument('--n_seeds', type=int, default=2, help='number of seeds')
+    parser.add_argument('--n_seeds', type=int, default=1, help='number of seeds')
     parser.add_argument('--configs', type=str, default='basic_configs', help='configure json file path')
     parser.add_argument('--save_model', type=bool, default=False, help='whether to save the trained model')
     args = parser.parse_args()
@@ -73,7 +66,7 @@ if __name__ == '__main__':
         config_dict['compare_single'] = False
 
     if config_dict['compare_centralized'] == True:
-        assert config_dict['k'] != 1, "You can't compare centralized training with centralized training"
+        assert config_dict['k'] != 1, "Comparing centralized training with centralized training"
         args_centralized = copy.deepcopy(args)
 
         input_dim , output_dim = 0, 0
@@ -90,7 +83,7 @@ if __name__ == '__main__':
         config_dict_centralized['compare_centralized'] = False
         config_dict_centralized['compare_single'] = False
 
-        #debug
+
         args_centralized.case = 'centralized'
 
         args_list += load_basic_configs(config_dict_centralized, args_centralized)
@@ -139,21 +132,13 @@ if __name__ == '__main__':
             else:
                 print('running on cpu')
 
-
-
-            mode = arg.apply_trainable_layer 
             print('============ apply_trainable_layer=',arg.apply_trainable_layer,'============')
             #print('================================')
-        
-            assert arg.dataset_split != None, "dataset_split attribute not found config json file"
-            assert 'dataset_name' in arg.dataset_split, 'dataset not specified, please add the name of the dataset in config json file'
-            arg.dataset = arg.dataset_split['dataset_name']
             
             print('case : ' + arg.case)
             
-            
             # Save record for different defense method
-            arg.exp_res_dir = f'exp_result/{arg.dataset}/Q{str(arg.Q)}/{str(mode)}/'
+            arg.exp_res_dir = f'exp_result/{arg.dataset}/Q{str(arg.Q)}/{str(arg.apply_trainable_layer)}/'
             if not os.path.exists(arg.exp_res_dir):
                 os.makedirs(arg.exp_res_dir)
             filename = f'model={arg.model_list[str(0)]["type"]}.txt'
@@ -166,6 +151,17 @@ if __name__ == '__main__':
             arg.basic_vfl = None
             arg.main_acc = None
 
+            if arg.dataset == 'satellite': # train test splitting of POIs
+                data = pd.read_csv(arg.data_root + r'\metadata.csv')
+                #rename 1st column to 'POI'
+                data = data.rename(columns={data.columns[0]: 'POI'})
+                data = data.loc[data['POI'] != 'ASMSpotter-1-1-1']
+                #split the POI between train and test
+                POI = data['POI'].unique()
+
+                arg.train_POI, arg.test_POI = train_test_split(POI, test_size=0.2, random_state=arg.current_seed, shuffle=True)
+                arg.train_POI, arg.test_POI = set(arg.train_POI), set(arg.test_POI)
+            
             arg = load_parties(arg)
 
             commuinfo='== commu:'+arg.communication_protocol

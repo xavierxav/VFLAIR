@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from load.LoadDataset import load_dataset_per_party
-from load.LoadModels import load_models_per_party
+from load.LoadModels import load_basic_models
 
 from utils.basic_functions import cross_entropy_for_onehot
 from utils.communication_protocol_funcs import Cache
@@ -24,50 +24,33 @@ class Party(object):
         self.half_dim = -1
         self.train_data = None
         self.test_data = None
-        self.aux_data = None
         self.train_label = None
         self.test_label = None
-        self.aux_label = None
         self.train_attribute = None
         self.test_attribute = None
-        self.aux_attribute = None
         self.train_dst = None
         self.test_dst = None
-        self.aux_dst = None
         self.train_loader = None
         self.test_loader = None
-        self.aux_loader = None
         self.attribute_loader = None
         self.attribute_iter = None
         self.local_batch_data = None
-        # backdoor poison data and label and target images list
-        self.train_poison_data = None
-        self.train_poison_label = None
-        self.test_poison_data = None
-        self.test_poison_label = None
-        self.train_target_list = None
-        self.test_target_list = None
+
         # local model
         self.local_model = None
         self.local_model_optimizer = None
         # global_model
         self.global_model = None
         self.global_model_optimizer = None
-        # attack and defense
-        # self.attacker = None
-        self.defender = None
 
-        self.prepare_data(args, index)
+
+        self.prepare_data()
+        
         self.prepare_model(args, index)
-        # self.prepare_attacker(args, index)
-        # self.prepare_defender(args, index)
 
         self.local_gradient = None
         self.local_pred = None
         self.local_pred_clone = None
-        self.grad_history = []
-
-        
         self.pred_received = []
         for _ in range(args.k):
             self.pred_received.append([])
@@ -83,14 +66,14 @@ class Party(object):
 
         return self.local_pred, self.local_pred_clone
 
-    def prepare_data(self, args, index):
+    def prepare_data(self):
         # prepare raw data for training
         (
-            args,
+            self.args,
             self.half_dim,
             train_dst,
             test_dst,
-        ) = load_dataset_per_party(args, index)
+        ) = load_dataset_per_party(self.args, self.index)
         if len(train_dst) == 2:
             self.train_data, self.train_label = train_dst
             self.test_data, self.test_label = test_dst
@@ -108,12 +91,11 @@ class Party(object):
     def prepare_model(self, args, index):
         # prepare model and optimizer
         (
-            args,
             self.local_model,
             self.local_model_optimizer,
             self.global_model,
             self.global_model_optimizer,
-        ) = load_models_per_party(args, index)
+        ) = load_basic_models(args, index)
     
     def give_current_lr(self):
         return (self.local_model_optimizer.state_dict()['param_groups'][0]['lr'])
@@ -152,7 +134,6 @@ class Party(object):
                 grad_outputs=self.local_gradient,
                 retain_graph=True
             )
-        self.grad_history.append(self.local_gradient)
         for w, g in zip(self.local_model.parameters(), self.weights_grad_a):
             if w.requires_grad:
                 w.grad = g.detach()

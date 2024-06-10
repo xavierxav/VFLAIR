@@ -48,7 +48,7 @@ from utils.basic_functions import (fetch_data_and_label,
                                    label_to_one_hot)
 
 # DATA_PATH ='./load/share_dataset/'  #'../../../share_dataset/'
-DATA_PATH ='./load/share_dataset/'
+DATA_PATH ='load/share_dataset/'
 IMAGE_DATA = ['mnist', 'cifar10', 'cifar100', 'cifar20', 'utkface', 'facescrub', 'places365']
 TABULAR_DATA = ['breast_cancer_diagnose','diabetes','adult_income','criteo','credit','nursery','avazu']
 GRAPH_DATA = ['cora']
@@ -65,10 +65,8 @@ def dataset_partition(args, index, dst, half_dim):
             if args.k == 2:
                 if index == 0:
                     return (dst[0][:, :, :half_dim, :], None)
-                    # return (dst[0][:, :, half_dim:, :], None)
                 elif index == 1:
                     return (dst[0][:, :, half_dim:, :], dst[1])
-                    # return (dst[0][:, :, :half_dim, :], dst[1])
                 else:
                     assert index <= 1, "invalide party index"
                     return None
@@ -76,7 +74,6 @@ def dataset_partition(args, index, dst, half_dim):
                 if index == 3:
                     return (dst[0][:, :, half_dim:, half_dim:], dst[1])
                 else:
-                    # passive party does not have label
                     if index == 0:
                         return (dst[0][:, :, :half_dim, :half_dim], None)
                     elif index == 1:
@@ -168,79 +165,47 @@ def dataset_partition(args, index, dst, half_dim):
             else:
                 assert index <= (args.k-1), "invalide party index"
                 return None
-    elif args.dataset in GRAPH_DATA: #args.dataset == 'cora':
-        assert args.k == 2, 'more than 2 party is not supported for cora'
-        if index == 0:
-            A_A, A_B, X_A, X_B = split_graph(args, dst[0][0], dst[0][1], split_method='com', split_ratio=0.5, with_s=True, with_f=True)
-            A_A = normalize_adj(A_A)
-            A_B = normalize_adj(A_B)
-            # print(type(A_A),type(A_B),type(X_A),type(X_B))
-            A_A = sparse_mx_to_torch_sparse_tensor(A_A).to(args.device)
-            args.A_B = sparse_mx_to_torch_sparse_tensor(A_B).to(args.device)
-            X_A = sparse_mx_to_torch_sparse_tensor(X_A).to(args.device)
-            args.X_B = sparse_mx_to_torch_sparse_tensor(X_B).to(args.device)
-            args.half_dim = [X_A.shape[1], X_B.shape[1]]
-            print("cora after split", A_A.shape, A_B.shape, X_A.shape, X_B.shape)
-            # print(args.half_dim)
-            return ([A_A,X_A],None), args
-        elif index == 1:
-            return ([args.A_B,args.X_B],dst[1]), args
-        else:
-            assert index <= 1, 'invalid party index'   
-    else:
-        assert args.dataset == 'mnist', f"dataset not supported {args.dataset}"
-        return None
-
+    
 def load_dataset_per_party(args, index):
     print('load_dataset_per_party')
-    args.classes = [None] * args.num_classes
 
     half_dim = -1
-    args.idx_train = None
-    args.idx_test = None
+
     if args.dataset == "cifar100":
         half_dim = 16
         train_dst = datasets.CIFAR100(DATA_PATH, download=True, train=True, transform=transform_fn)
         data, label = fetch_data_and_label(train_dst, args.num_classes)
-        # train_dst = SimpleDataset(data, label)
         train_dst = (torch.tensor(data), label)
 
         test_dst = datasets.CIFAR100(DATA_PATH, download=True, train=False, transform=transform_fn)
         data, label = fetch_data_and_label(test_dst, args.num_classes)
-        # test_dst = SimpleDataset(data, label)
         test_dst = (torch.tensor(data), label)
     elif args.dataset == "cifar20":
         half_dim = 16
         train_dst = datasets.CIFAR100(DATA_PATH, download=True, train=True, transform=transform_fn)
         data, label = fetch_data_and_label(train_dst, args.num_classes)
-        # train_dst = SimpleDataset(data, label)
         train_dst = (torch.tensor(data), label)
         
         test_dst = datasets.CIFAR100(DATA_PATH, download=True, train=False, transform=transform_fn)
         data, label = fetch_data_and_label(test_dst, args.num_classes)
-        # test_dst = SimpleDataset(data, label)
         test_dst = (torch.tensor(data), label)
     elif args.dataset == "cifar10":
         half_dim = 16
         train_dst = datasets.CIFAR10(DATA_PATH, download=True, train=True, transform=transform_fn)
         data, label = fetch_data_and_label(train_dst, args.num_classes)
-        # train_dst = SimpleDataset(data, label)
         train_dst = (torch.tensor(data), label)
 
         test_dst = datasets.CIFAR10(DATA_PATH, download=True, train=False, transform=transform_fn)
         data, label = fetch_data_and_label(test_dst, args.num_classes)
-        # test_dst = SimpleDataset(data, label)
         test_dst = (torch.tensor(data), label)
     elif args.dataset == "mnist":
         half_dim = 14
         train_dst = datasets.MNIST("~/.torch", download=True, train=True, transform=transform_fn)
         data, label = fetch_data_and_label(train_dst, args.num_classes)
-        # train_dst = SimpleDataset(data, label)
         train_dst = (torch.tensor(data), label)
 
         test_dst = datasets.MNIST("~/.torch", download=True, train=False, transform=transform_fn)
         data, label = fetch_data_and_label(test_dst, args.num_classes)
-        # test_dst = SimpleDataset(data, label)
         test_dst = (data, label)
     elif args.dataset == 'utkface': # with attribute
         # 0.8 for train (all for train, but with 50% also for aux) and 0.2 for test
@@ -290,7 +255,6 @@ def load_dataset_per_party(args, index):
             train_dst = (X_train, y_train, a_train)
             test_dst = (X_test, y_test, a_test)
             args.num_attributes = len(np.unique(a_train.numpy()))
-            # print(f"[debug] in load dataset, number of attributes for UTKFace: {args.num_attributes}")
     elif args.dataset == 'facescrub':
         half_dim = 25
         def load_gender():
@@ -408,21 +372,10 @@ def load_dataset_per_party(args, index):
         label = label_to_one_hot(label, num_classes=args.num_classes)
         test_dst = (data, label)
         print("nuswide dataset [test]:", data[0].shape, data[1].shape, label.shape)
-    elif args.dataset in GRAPH_DATA:
-        if args.dataset == 'cora':
-            adj, features, idx_train, idx_val, idx_test, label = load_data1(args.dataset)
-            target_nodes = idx_test
-            A = np.array(adj.todense())
-            X = sparse_to_tuple(features.tocoo())
-            print("cora dataset before split", A.shape, type(X), X[0].shape)
-            print(f"#train_sample={len(idx_train)}, #test_sample={len(idx_test)}")
-            args.idx_train = torch.LongTensor(idx_train)
-            args.idx_test = torch.LongTensor(idx_test)
-            label = torch.LongTensor(label).to(args.device)
 
-            train_dst = ([adj, features], label)
-            test_dst = ([adj, features, target_nodes], label)
-        half_dim = -1
+        data = data.rename(columns={data.columns[0]: 'POI'})
+        
+
     elif args.dataset in TABULAR_DATA:
         if args.dataset == 'breast_cancer_diagnose':
             half_dim = 15
@@ -482,7 +435,10 @@ def load_dataset_per_party(args, index):
             X = pd.concat([X_a, X_p], axis=1).values
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.10, shuffle=False)
         elif args.dataset == "credit":
-            df = pd.read_csv(DATA_PATH+"tabledata/UCI_Credit_Card.csv")
+            if args.data_root is None:
+                df = pd.read_csv(DATA_PATH+"tabledata/UCI_Credit_Card.csv")
+            else:
+                df = pd.read_csv(args.data_root + "UCI_Credit_Card.csv")
             print("credit dataset loaded")
 
             X = df[
@@ -628,16 +584,3 @@ def load_dataset_per_party(args, index):
             test_dst = ([deepcopy(train_dst[0][0]),deepcopy(train_dst[0][1]),test_dst[0][2]],test_dst[1],test_dst[2])
     # important
     return args, half_dim, train_dst, test_dst
-
-
-    # logging.info(f"Processing feats: {feats}")
-    d = data.copy()
-    d = d[feats].fillna("-1")
-    for f in feats:
-        label_encoder = LabelEncoder()
-        d[f] = label_encoder.fit_transform(d[f])
-    feature_cnt = 0
-    for f in feats:
-        d[f] += feature_cnt
-        feature_cnt += d[f].nunique()
-    return d

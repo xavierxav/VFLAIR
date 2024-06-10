@@ -5,16 +5,12 @@ import torch
 from torch.utils.data import DataLoader
 from party.party import Party
 from utils.basic_functions import cross_entropy_for_onehot
-from dataset.party_dataset import ActiveDataset
+from dataset.party_dataset import ActiveDataset , ActiveSatelliteDataset
 from sys import getsizeof
 
 class ActiveParty(Party):
     def __init__(self, args, index):
         super().__init__(args, index)
-        self.encoder = args.encoder
-        # print(f"in active party, encoder=None? {self.encoder==None}, {self.encoder}")
-        self.train_index = args.idx_train
-        self.test_index = args.idx_test
         
         self.gt_one_hot_label = None
         
@@ -22,10 +18,14 @@ class ActiveParty(Party):
         self.global_loss = None
         self.criterion = cross_entropy_for_onehot
 
-    def prepare_data(self, args, index):
-        super().prepare_data(args, index)
-        self.train_dst = ActiveDataset(self.train_data, self.train_label)
-        self.test_dst = ActiveDataset(self.test_data, self.test_label)
+    def prepare_data(self):
+        if self.args.dataset == 'satellite':
+            self.train_dst = ActiveSatelliteDataset(test_train_POI = self.args.train_POI , index = self.index , root = self.args.data_root)
+            self.test_dst = ActiveSatelliteDataset(test_train_POI = self.args.test_POI , index = self.index , root = self.args.data_root)
+        else:
+            super().prepare_data()
+            self.train_dst = ActiveDataset(self.train_data, self.train_label)
+            self.test_dst = ActiveDataset(self.test_data, self.test_label)
 
     def aggregate(self, pred_list, gt_one_hot_label):
         pred = self.global_model(pred_list)
@@ -86,13 +86,8 @@ class ActiveParty(Party):
         for ic in range(global_pred.size(1)):
             one_hot_label *= 0.0
             one_hot_label[:,ic] += 1.0
-            if self.train_index != None: # for graph data
-                if test == False:
-                    loss = self.criterion(global_pred[self.train_index], one_hot_label[self.train_index])
-                else:
-                    loss = self.criterion(global_pred[self.test_index], one_hot_label[self.test_index])
-            else:
-                loss = self.criterion(global_pred, one_hot_label)
+            
+            loss = self.criterion(global_pred, one_hot_label)
             for ik in range(self.args.k):
                 self.gradient_each_class[ic].append(torch.autograd.grad(loss, local_pred_list[ik], retain_graph=True, create_graph=True))
         # end of calculate_gradient_each_class, return nothing

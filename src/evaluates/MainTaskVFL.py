@@ -2,13 +2,8 @@ import sys, os
 sys.path.append(os.pardir)
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
 import tensorflow as tf
-import matplotlib.pyplot as plt
-
-from tqdm import tqdm
 import numpy as np
-import random
 import time
 import copy
 
@@ -24,7 +19,8 @@ tf.compat.v1.enable_eager_execution()
 
 STOPPING_ACC = {'mnist': 0.977, 'cifar10': 0.80, 'cifar100': 0.40,'diabetes':0.69,\
 'nuswide': 0.88, 'breast_cancer_diagnose':0.88,'adult_income':0.84,'cora':0.72,\
-'avazu':0.83,'criteo':0.74,'nursery':0.99,'credit':0.82}  # add more about stopping accuracy for different datasets when calculating the #communication-rounds needed
+'avazu':0.83,'criteo':0.74,'nursery':0.99,'credit':0.82, 'satellite':10}
+# add more about stopping accuracy for different datasets when calculating the #communication-rounds needed
 
 
 class MainTaskVFL(object):
@@ -34,15 +30,10 @@ class MainTaskVFL(object):
         self.k = args.k
         self.device = args.device
         self.dataset_name = args.dataset
-        # self.train_dataset = args.train_dst
-        # self.val_dataset = args.test_dst
-        # self.half_dim = args.half_dim
         self.epochs = args.main_epochs
         self.lr = args.main_lr
         self.batch_size = args.batch_size
         self.models_dict = args.model_list
-        # self.num_classes = args.num_classes
-        # self.num_class_list = args.num_class_list
         self.num_classes = args.num_classes
         self.exp_res_dir = args.exp_res_dir
 
@@ -50,7 +41,8 @@ class MainTaskVFL(object):
         self.parties = args.parties
         
         self.Q = args.Q # FedBCD
-
+        # print cuda memory usage
+        
         self.parties_data = None
         self.gt_one_hot_label = None
         self.clean_one_hot_label  = None
@@ -303,7 +295,7 @@ class MainTaskVFL(object):
         suc_cnt = torch.sum(torch.argmax(predict_prob, dim=-1) == torch.argmax(batch_label, dim=-1)).item()
         train_acc = suc_cnt / predict_prob.shape[0]
         
-        return loss.item(), train_acc
+        return loss.item(), suc_cnt , predict_prob.shape[0]
 
     def train(self):
 
@@ -312,24 +304,23 @@ class MainTaskVFL(object):
         for ik in range(self.k):
             self.parties[ik].prepare_data_loader(batch_size=self.batch_size)
 
-        test_acc = 0.0
-        # Early Stop
-        last_loss = 1000000
-        early_stop_count = 0
         LR_passive_list = []
         LR_active_list = []
         self.num_total_comms = 0
         total_time = 0.0
-        flag = 0
         self.current_epoch = 0
-        start_time = time.time()
         for i_epoch in range(self.epochs):
             self.current_epoch = i_epoch
             i = -1
             data_loader_list = [self.parties[ik].train_loader for ik in range(self.k)]
 
             self.current_step = 0
+            suc_cnt = 0
+            sample_cnt = 0
+            loss = 0.0
             for parties_data in zip(*data_loader_list):
+
+                parties_data = [(data[0].to(self.device), data[1].to(self.device)) for data in parties_data]
                 self.gt_one_hot_label = self.label_to_one_hot(parties_data[self.k-1][1], self.num_classes)
                 self.gt_one_hot_label = self.gt_one_hot_label.to(self.device)
                 
@@ -341,22 +332,25 @@ class MainTaskVFL(object):
                 self.parties[self.k-1].global_model.train()
                 
                 enter_time = time.time()
-                loss , train_acc = self.train_batch(self.parties_data,self.gt_one_hot_label)
-                self.loss.append(loss)
-                self.train_acc.append(train_acc)
+                loss_batch , suc_cnt_batch , sample_cnt_batch = self.train_batch(parties_data, self.gt_one_hot_label)
+                loss += loss_batch * sample_cnt_batch
+                suc_cnt += suc_cnt_batch
+                sample_cnt += sample_cnt_batch
                 exit_time = time.time()
                 total_time += (exit_time-enter_time)
                 self.num_total_comms = self.num_total_comms + 1
                 if self.num_total_comms % 10 == 0:
                     print(f"total time for {self.num_total_comms} communication is {total_time}")
-                if self.train_acc[-1] > STOPPING_ACC[str(self.args.dataset)] and flag == 0:
-                    self.stopping_time = total_time
-                    self.stopping_iter = self.num_total_comms
-                    self.stopping_commu_cost = self.communication_cost
-                    flag = 1
+                # if self.train_acc[-1] > STOPPING_ACC[str(self.args.dataset)] and flag == 0:
+                #     self.stopping_time = total_time
+                #     self.stopping_iter = self.num_total_comms
+                #     self.stopping_commu_cost = self.communication_cost
+                #     flag = 1
 
                 self.current_step = self.current_step + 1
-
+            
+            self.loss.append(loss / float(sample_cnt))
+            self.train_acc.append(suc_cnt / float(sample_cnt))
             self.trained_models = self.save_state(True)
             if self.args.save_model == True:
                 self.save_trained_models()
@@ -382,9 +376,9 @@ class MainTaskVFL(object):
                 with torch.no_grad():
                     data_loader_list = [self.parties[ik].test_loader for ik in range(self.k)]
                     for parties_data in zip(*data_loader_list):
+                        parties_data = [(data[0].to(self.device), data[1].to(self.device)) for data in parties_data]
 
                         gt_val_one_hot_label = self.label_to_one_hot(parties_data[self.k-1][1], self.num_classes)
-                        gt_val_one_hot_label = gt_val_one_hot_label.to(self.device)
         
                         pred_list = []
                         for ik in range(self.k):
@@ -447,16 +441,12 @@ class MainTaskVFL(object):
 
     def save_party_data(self):
         return {
-            "aux_data": [copy.deepcopy(self.parties[ik].aux_data) for ik in range(self.k)],
             "train_data": [copy.deepcopy(self.parties[ik].train_data) for ik in range(self.k)],
             "test_data": [copy.deepcopy(self.parties[ik].test_data) for ik in range(self.k)],
-            "aux_label": [copy.deepcopy(self.parties[ik].aux_label) for ik in range(self.k)],
             "train_label": [copy.deepcopy(self.parties[ik].train_label) for ik in range(self.k)],
             "test_label": [copy.deepcopy(self.parties[ik].test_label) for ik in range(self.k)],
-            "aux_attribute": [copy.deepcopy(self.parties[ik].aux_attribute) for ik in range(self.k)],
             "train_attribute": [copy.deepcopy(self.parties[ik].train_attribute) for ik in range(self.k)],
             "test_attribute": [copy.deepcopy(self.parties[ik].test_attribute) for ik in range(self.k)],
-            "aux_loader": [copy.deepcopy(self.parties[ik].aux_loader) for ik in range(self.k)],
             "train_loader": [copy.deepcopy(self.parties[ik].train_loader) for ik in range(self.k)],
             "test_loader": [copy.deepcopy(self.parties[ik].test_loader) for ik in range(self.k)],
             "batchsize": self.args.batch_size,

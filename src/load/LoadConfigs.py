@@ -69,8 +69,15 @@ def load_basic_configs(config_dict, args):
     # args.num_exp = config_dict['num_exp'] if ('num_exp' in config_dict) else 10
     
     # args.dataset_split
-    args.dataset_split = config_dict['dataset'] if('dataset' in config_dict) else None
-    args.num_classes = args.dataset_split['num_classes'] if('num_classes' in args.dataset_split) else 10
+    assert 'dataset' in config_dict, 'dataset not specified, please add the name of the dataset in config json file'
+    assert 'dataset_name' in config_dict['dataset'], 'dataset not specified, please add the name of the dataset in config json file'
+    args.dataset = config_dict['dataset']['dataset_name']
+    args.num_classes =config_dict['dataset']['num_classes'] if('num_classes' in config_dict['dataset']) else 10
+
+    if args.dataset == 'satellite':
+        args.data_root = config_dict['dataset']['data_root']
+        args.features_instead = config_dict['dataset']['features_instead']
+
 
     # args.model_list, specify the types of models
     if 'model_list' in config_dict:
