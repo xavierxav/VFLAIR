@@ -57,7 +57,7 @@ def ins_weight(V, stale_V, smi_thresh):
 # Compress
 def compress_pred( args, pred , local_grad,  epoch ,step ):
     
-    comp = args.communication_protocol
+    comp = args.communication.communication_protocol
     if comp == 'Topk':
         ratio = args.ratio
         # if args.quant_level > 0:

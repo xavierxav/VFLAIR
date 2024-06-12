@@ -56,11 +56,11 @@ TEXT_DATA = ['news20']
 
 
 def dataset_partition(args, index, dst, half_dim):
-    if args.data_split != None:
+    if args.case[:12] == 'single_party':
         return (dst[0][:, args.data_split[0]:args.data_split[1]], dst[1])
     if args.k == 1:
         return dst
-    if args.dataset in IMAGE_DATA:
+    if args.dataset.dataset_name in IMAGE_DATA:
         if len(dst) == 2: # IMAGE_DATA without attribute
             if args.k == 2:
                 if index == 0:
@@ -118,7 +118,7 @@ def dataset_partition(args, index, dst, half_dim):
             else:
                 assert (args.k == 2 or args.k == 4), "total number of parties not supported for data partitioning"
                 return None
-    elif args.dataset in ['nuswide']:
+    elif args.dataset.dataset_name in ['nuswide']:
         if args.k == 2:
             if index == 0:
                 return (dst[0][0],None) # passive party with text
@@ -127,10 +127,10 @@ def dataset_partition(args, index, dst, half_dim):
         else:
             assert (args.k == 2), "total number of parties not supported for data partitioning"
             return None
-    elif args.dataset in TABULAR_DATA:
+    elif args.dataset.dataset_name in TABULAR_DATA:
         dim_list=[]
         for ik in range(args.k):
-            dim_list.append(int(args.model_list[str(ik)]['input_dim']))
+            dim_list.append(int(args.model_list[ik]['input_dim']))
             if len(dim_list)>1:
                 for i in range(1, len(dim_list)):
                     dim_list[i]=dim_list[i]+dim_list[i-1]
@@ -145,7 +145,7 @@ def dataset_partition(args, index, dst, half_dim):
             else:
                 assert index <= (args.k-1), "invalide party index"
                 return None
-    elif args.dataset in TEXT_DATA: 
+    elif args.dataset.dataset_name in TEXT_DATA: 
         dim_list=[]
         for ik in range(args.k):
             dim_list.append(int(args.model_list[str(ik)]['input_dim']))
@@ -171,43 +171,43 @@ def load_dataset_per_party(args, index):
 
     half_dim = -1
 
-    if args.dataset == "cifar100":
+    if args.dataset.dataset_name == "cifar100":
         half_dim = 16
         train_dst = datasets.CIFAR100(DATA_PATH, download=True, train=True, transform=transform_fn)
-        data, label = fetch_data_and_label(train_dst, args.num_classes)
+        data, label = fetch_data_and_label(train_dst, args.dataset.num_classes)
         train_dst = (torch.tensor(data), label)
 
         test_dst = datasets.CIFAR100(DATA_PATH, download=True, train=False, transform=transform_fn)
-        data, label = fetch_data_and_label(test_dst, args.num_classes)
+        data, label = fetch_data_and_label(test_dst, args.dataset.num_classes)
         test_dst = (torch.tensor(data), label)
-    elif args.dataset == "cifar20":
+    elif args.dataset.dataset_name == "cifar20":
         half_dim = 16
         train_dst = datasets.CIFAR100(DATA_PATH, download=True, train=True, transform=transform_fn)
-        data, label = fetch_data_and_label(train_dst, args.num_classes)
+        data, label = fetch_data_and_label(train_dst, args.dataset.num_classes)
         train_dst = (torch.tensor(data), label)
         
         test_dst = datasets.CIFAR100(DATA_PATH, download=True, train=False, transform=transform_fn)
-        data, label = fetch_data_and_label(test_dst, args.num_classes)
+        data, label = fetch_data_and_label(test_dst, args.dataset.num_classes)
         test_dst = (torch.tensor(data), label)
-    elif args.dataset == "cifar10":
+    elif args.dataset.dataset_name == "cifar10":
         half_dim = 16
         train_dst = datasets.CIFAR10(DATA_PATH, download=True, train=True, transform=transform_fn)
-        data, label = fetch_data_and_label(train_dst, args.num_classes)
+        data, label = fetch_data_and_label(train_dst, args.dataset.num_classes)
         train_dst = (torch.tensor(data), label)
 
         test_dst = datasets.CIFAR10(DATA_PATH, download=True, train=False, transform=transform_fn)
-        data, label = fetch_data_and_label(test_dst, args.num_classes)
+        data, label = fetch_data_and_label(test_dst, args.dataset.num_classes)
         test_dst = (torch.tensor(data), label)
-    elif args.dataset == "mnist":
+    elif args.dataset.dataset_name == "mnist":
         half_dim = 14
         train_dst = datasets.MNIST("~/.torch", download=True, train=True, transform=transform_fn)
-        data, label = fetch_data_and_label(train_dst, args.num_classes)
+        data, label = fetch_data_and_label(train_dst, args.dataset.num_classes)
         train_dst = (torch.tensor(data), label)
 
         test_dst = datasets.MNIST("~/.torch", download=True, train=False, transform=transform_fn)
-        data, label = fetch_data_and_label(test_dst, args.num_classes)
+        data, label = fetch_data_and_label(test_dst, args.dataset.num_classes)
         test_dst = (data, label)
-    elif args.dataset == 'utkface': # with attribute
+    elif args.dataset.dataset_name == 'utkface': # with attribute
         # 0.8 for train (all for train, but with 50% also for aux) and 0.2 for test
         half_dim = 25
         with np.load(DATA_PATH + 'UTKFace/utk_resize.npz') as f:
@@ -255,7 +255,7 @@ def load_dataset_per_party(args, index):
             train_dst = (X_train, y_train, a_train)
             test_dst = (X_test, y_test, a_test)
             args.num_attributes = len(np.unique(a_train.numpy()))
-    elif args.dataset == 'facescrub':
+    elif args.dataset.dataset_name == 'facescrub':
         half_dim = 25
         def load_gender():
             i = 0
@@ -313,7 +313,7 @@ def load_dataset_per_party(args, index):
             test_dst = (X_test, y_test, a_test)
             args.num_attributes = len(np.unique(a_train.numpy()))
             print(f"[debug] in load dataset, number of attributes for FaceScrub: {args.num_attributes}")
-    elif args.dataset == 'places365':
+    elif args.dataset.dataset_name == 'places365':
         half_dim = 64
         with np.load(DATA_PATH + 'Places365/place128.npz') as f:
             data, label, attribute = f['arr_0'], f['arr_1'], f['arr_2']
@@ -339,11 +339,11 @@ def load_dataset_per_party(args, index):
             test_dst = (X_test, y_test, a_test)
             args.num_attributes = len(np.unique(a_train.numpy()))
             # print(f"[debug] in load dataset, number of attributes for Places365: {args.num_attributes}")
-    elif args.dataset == 'nuswide':
+    elif args.dataset.dataset_name == 'nuswide':
         half_dim = [1000, 634]
-        if args.num_classes == 5:
+        if args.dataset.num_classes == 5:
             selected_labels = ['buildings', 'grass', 'animal', 'water', 'person'] # class_num = 5
-        elif args.num_classes == 2:
+        elif args.dataset.num_classes == 2:
             selected_labels = ['clouds','person'] # class_num = 2
             # sky 34969 light 21022
             # nature 34894 sunset 20757
@@ -361,7 +361,7 @@ def load_dataset_per_party(args, index):
         
         data = [torch.tensor(X_text, dtype=torch.float32), torch.tensor(X_image, dtype=torch.float32)]
         label = torch.squeeze(torch.tensor(np.argmax(np.array(Y), axis=1), dtype=torch.long))
-        label = label_to_one_hot(label, num_classes=args.num_classes)
+        label = label_to_one_hot(label, num_classes=args.dataset.num_classes)
             
         train_dst = (data, label) # (torch.tensor(data),label)
         print("nuswide dataset [train]:", data[0].shape, data[1].shape, label.shape)
@@ -369,15 +369,15 @@ def load_dataset_per_party(args, index):
         X_image, X_text, Y = get_labeled_data(DATA_PATH+'NUS_WIDE', selected_labels, 40000, 'Test')
         data = [torch.tensor(X_text, dtype=torch.float32), torch.tensor(X_image, dtype=torch.float32)]
         label = torch.squeeze(torch.tensor(np.argmax(np.array(Y), axis=1), dtype=torch.long))
-        label = label_to_one_hot(label, num_classes=args.num_classes)
+        label = label_to_one_hot(label, num_classes=args.dataset.num_classes)
         test_dst = (data, label)
         print("nuswide dataset [test]:", data[0].shape, data[1].shape, label.shape)
 
         data = data.rename(columns={data.columns[0]: 'POI'})
         
 
-    elif args.dataset in TABULAR_DATA:
-        if args.dataset == 'breast_cancer_diagnose':
+    elif args.dataset.dataset_name in TABULAR_DATA:
+        if args.dataset.dataset_name == 'breast_cancer_diagnose':
             half_dim = 15
             df = pd.read_csv(DATA_PATH+"BreastCancer/wdbc.data",header = 0)
             X = df.iloc[:, 2:].values
@@ -389,13 +389,13 @@ def load_dataset_per_party(args, index):
             scaler = MinMaxScaler()
             X_train = scaler.fit_transform(X_train)
             X_test = scaler.fit_transform(X_test)
-        elif args.dataset == 'diabetes':
+        elif args.dataset.dataset_name == 'diabetes':
             half_dim = 4
             df = pd.read_csv(DATA_PATH+"Diabetes/diabetes.csv",header = 0)
             X = df.iloc[:, :-1].values
             y = df.iloc[:, -1].values
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=args.current_seed)
-        elif args.dataset == 'adult_income':
+        elif args.dataset.dataset_name == 'adult_income':
             df = pd.read_csv(DATA_PATH+"Income/adult.csv",header = 0)
             df = df.drop_duplicates()
             # 'age', 'workclass', 'fnlwgt', 'education', 'educational-num',
@@ -420,7 +420,7 @@ def load_dataset_per_party(args, index):
             # half_dim = 6+9+16+7+15 #=53 acc=0.77
             # half_dim = int(X.shape[1]//2) acc=0.77
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30, random_state=args.current_seed)
-        elif args.dataset == 'criteo':
+        elif args.dataset.dataset_name == 'criteo':
             df = pd.read_csv(DATA_PATH+"Criteo/train.txt", sep='\t', header=None)
             df = df.sample(frac=0.02, replace=False, random_state=42)
             df.columns = ["labels"] + ["I%d"%i for i in range(1,14)] + ["C%d"%i for i in range(14,40)]
@@ -434,11 +434,8 @@ def load_dataset_per_party(args, index):
             print('X_a shape',X_a.shape)
             X = pd.concat([X_a, X_p], axis=1).values
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.10, shuffle=False)
-        elif args.dataset == "credit":
-            if args.data_root is None:
-                df = pd.read_csv(DATA_PATH+"tabledata/UCI_Credit_Card.csv")
-            else:
-                df = pd.read_csv(args.data_root + "UCI_Credit_Card.csv")
+        elif args.dataset.dataset_name == "credit":
+            df = pd.read_csv(DATA_PATH+"tabledata/UCI_Credit_Card.csv")
             print("credit dataset loaded")
 
             X = df[
@@ -469,11 +466,11 @@ def load_dataset_per_party(args, index):
                 ]
             ].values
             y = df["default.payment.next.month"].values
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=args.seed, stratify=y)
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=args.runtime.seed, stratify=y)
             scaler = StandardScaler() # MinMaxScaler(feature_range=(0, 1))
             X_train = scaler.fit_transform(X_train)
             X_test = scaler.transform(X_test)
-        elif args.dataset == "nursery":
+        elif args.dataset.dataset_name == "nursery":
             df = pd.read_csv(DATA_PATH+"tabledata/nursery.data", header=None)
             print("nursery dataset loaded")
             df[8] = LabelEncoder().fit_transform(df[8].values)
@@ -490,7 +487,7 @@ def load_dataset_per_party(args, index):
             print('X',X.shape)
             y = df[8].values
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=args.seed, stratify=y)
-        elif args.dataset == 'avazu':
+        elif args.dataset.dataset_name == 'avazu':
             df = pd.read_csv(DATA_PATH+"avazu/train")
             df = df.sample(frac=0.02, replace=False, random_state=42)
             y = df["click"].values
@@ -512,8 +509,8 @@ def load_dataset_per_party(args, index):
         y_test = torch.tensor(y_test)
         train_dst = (X_train,y_train)
         test_dst = (X_test,y_test)
-    elif args.dataset in TEXT_DATA:
-        if args.dataset == 'news20':
+    elif args.dataset.dataset_name in TEXT_DATA:
+        if args.dataset.dataset_name == 'news20':
             texts, labels, labels_index = [], {}, []
             Text_dir = DATA_PATH+'news20/'
             for name in sorted(os.listdir(Text_dir)):
@@ -554,29 +551,29 @@ def load_dataset_per_party(args, index):
         test_dst = (X_test,y_test)
 
     else:
-        assert args.dataset == 'mnist', "dataset not supported yet"
+        assert args.dataset.dataset_name == 'mnist', "dataset not supported yet"
     
     if len(train_dst) == 2:
-        if not args.dataset in GRAPH_DATA:
-            if not args.dataset == 'nuswide':
-                train_dst = (train_dst[0].to(args.device),train_dst[1].to(args.device))
-                test_dst = (test_dst[0].to(args.device),test_dst[1].to(args.device))
+        if not args.dataset.dataset_name in GRAPH_DATA:
+            if not args.dataset.dataset_name == 'nuswide':
+                train_dst = (train_dst[0].to(args.runtime.device),train_dst[1].to(args.runtime.device))
+                test_dst = (test_dst[0].to(args.runtime.device),test_dst[1].to(args.runtime.device))
             else:
-                train_dst = ([train_dst[0][0].to(args.device),train_dst[0][1].to(args.device)],train_dst[1].to(args.device))
-                test_dst = ([test_dst[0][0].to(args.device),test_dst[0][1].to(args.device)],test_dst[1].to(args.device))
+                train_dst = ([train_dst[0][0].to(args.runtime.device),train_dst[0][1].to(args.runtime.device)],train_dst[1].to(args.runtime.device))
+                test_dst = ([test_dst[0][0].to(args.runtime.device),test_dst[0][1].to(args.runtime.device)],test_dst[1].to(args.runtime.device))
             train_dst = dataset_partition(args,index,train_dst,half_dim)
             test_dst = dataset_partition(args,index,test_dst,half_dim)
         else:
             train_dst, args = dataset_partition(args,index,train_dst,half_dim)
             test_dst = ([deepcopy(train_dst[0][0]),deepcopy(train_dst[0][1]),test_dst[0][2]],test_dst[1])
     elif len(train_dst) == 3:
-        if not args.dataset in GRAPH_DATA:
-            if not args.dataset == 'nuswide':
-                train_dst = (train_dst[0].to(args.device),train_dst[1].to(args.device),train_dst[2].to(args.device))
-                test_dst = (test_dst[0].to(args.device),test_dst[1].to(args.device),test_dst[2].to(args.device))
+        if not args.dataset.dataset_name in GRAPH_DATA:
+            if not args.dataset.dataset_name == 'nuswide':
+                train_dst = (train_dst[0].to(args.runtime.device),train_dst[1].to(args.runtime.device),train_dst[2].to(args.runtime.device))
+                test_dst = (test_dst[0].to(args.runtime.device),test_dst[1].to(args.runtime.device),test_dst[2].to(args.runtime.device))
             else:
-                train_dst = ([train_dst[0][0].to(args.device),train_dst[0][1].to(args.device)],train_dst[1].to(args.device),train_dst[2].to(args.device))
-                test_dst = ([test_dst[0][0].to(args.device),test_dst[0][1].to(args.device)],test_dst[1].to(args.device),test_dst[2].to(args.device))
+                train_dst = ([train_dst[0][0].to(args.runtime.device),train_dst[0][1].to(args.runtime.device)],train_dst[1].to(args.runtime.device),train_dst[2].to(args.runtime.device))
+                test_dst = ([test_dst[0][0].to(args.runtime.device),test_dst[0][1].to(args.runtime.device)],test_dst[1].to(args.runtime.device),test_dst[2].to(args.runtime.device))
             train_dst = dataset_partition(args,index,train_dst,half_dim)
             test_dst = dataset_partition(args,index,test_dst,half_dim)
         else:

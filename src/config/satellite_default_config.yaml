@@ -1,0 +1,34 @@
+hydra:
+  job:
+    chdir: False
+    # This is the default configuration for Hydra, which is to keep the working directory as the root of the project.
+
+epochs: 5
+lr: 0.003
+batch_size: 256
+early_stop_threshold: 5
+k: 1
+
+communication:
+  communication_protocol: FedSGD
+  iteration_per_aggregation: 1
+
+dataset:
+  dataset_name: satellite
+  num_classes: 4
+
+global_model:
+  apply_trainable_layer: 1
+  model: ClassificationModelHostTrainableHead
+
+model_list:  # Default to a single model, can be overridden by a list of models
+  - input_dim: 25600
+    output_dim: 10
+    type: SatelliteCNN
+
+runtime:
+  device: cuda
+  gpu: 0
+  seed: 97
+  n_seeds: 1
+  save_model: False

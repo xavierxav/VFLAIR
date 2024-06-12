@@ -19,9 +19,9 @@ class ActiveParty(Party):
         self.criterion = cross_entropy_for_onehot
 
     def prepare_data(self):
-        if self.args.dataset == 'satellite':
-            self.train_dst = ActiveSatelliteDataset(test_train_POI = self.args.train_POI , index = self.index , root = self.args.data_root)
-            self.test_dst = ActiveSatelliteDataset(test_train_POI = self.args.test_POI , index = self.index , root = self.args.data_root)
+        if self.args.dataset.dataset_name == 'satellite':
+            self.train_dst = ActiveSatelliteDataset(test_train_POI = self.args.dataset.train_POI , index = self.index , root = self.args.data_root)
+            self.test_dst = ActiveSatelliteDataset(test_train_POI = self.args.dataset.test_POI , index = self.index , root = self.args.data_root)
         else:
             super().prepare_data()
             self.train_dst = ActiveDataset(self.train_data, self.train_label)
@@ -54,7 +54,7 @@ class ActiveParty(Party):
 
     def global_LR_decay(self,i_epoch):
         if self.global_model_optimizer != None: 
-            eta_0 = self.args.main_lr
+            eta_0 = self.args.lr
             eta_t = eta_0/(np.sqrt(i_epoch+1))
             for param_group in self.global_model_optimizer.param_groups:
                 param_group['lr'] = eta_t
@@ -70,7 +70,7 @@ class ActiveParty(Party):
             self.global_model_optimizer.zero_grad()
             parameters = []          
             # trainable layer parameters
-            if self.args.apply_trainable_layer == True:
+            if self.args.global_model.apply_trainable_layer == True:
                 # load grads into parameters
                 weights_grad_a = torch.autograd.grad(self.global_pred, self.global_model.parameters(), grad_outputs=_gradients_clone, retain_graph=True)
                 for w, g in zip(self.global_model.parameters(), weights_grad_a):

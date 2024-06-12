@@ -18,6 +18,7 @@ src/load/share_dataset
 # experiment result files
 src/exp_result/
 ./src/exp_result/*/*
+src/outputs/
 
 # debug files
 ./debug.*

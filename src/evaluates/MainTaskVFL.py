@@ -28,19 +28,19 @@ class MainTaskVFL(object):
     def __init__(self, args):
         self.args = args
         self.k = args.k
-        self.device = args.device
-        self.dataset_name = args.dataset
-        self.epochs = args.main_epochs
-        self.lr = args.main_lr
+        self.device = args.runtime.device
+        self.dataset_name = args.dataset.dataset_name
+        self.epochs = args.epochs
+        self.lr = args.lr
         self.batch_size = args.batch_size
         self.models_dict = args.model_list
-        self.num_classes = args.num_classes
+        self.num_classes = args.dataset.num_classes
         self.exp_res_dir = args.exp_res_dir
 
         self.exp_res_path = args.exp_res_path
         self.parties = args.parties
         
-        self.Q = args.Q # FedBCD
+        self.Q = args.communication.iteration_per_aggregation # number of iterations for FedBCD
         # print cuda memory usage
         
         self.parties_data = None
@@ -80,25 +80,24 @@ class MainTaskVFL(object):
         self.final_state = None
         # self.final_epoch_state = None # <-- this is save in the above parameters
 
-        self.num_update_per_batch = args.num_update_per_batch
-        self.num_batch_per_workset = args.Q #args.num_batch_per_workset
-        self.max_staleness = self.num_update_per_batch*self.num_batch_per_workset 
+        self.num_update_per_batch = args.communication.num_update_per_batch
+        self.max_staleness = self.num_update_per_batch*self.Q 
   
     def pred_transmit(self): # Active party gets pred from passive parties
         for ik in range(self.k):
             pred, pred_detach = self.parties[ik].give_pred()
 
             if ik == (self.k-1): # Active party update local pred
-                pred_clone = torch.autograd.Variable(pred_detach, requires_grad=True).to(self.args.device)
+                pred_clone = torch.autograd.Variable(pred_detach, requires_grad=True).to(self.args.runtime.device)
                 self.parties[self.k-1].receive_pred(pred_clone, ik) 
             
             if ik < (self.k-1): # Passive party sends pred for aggregation
                 ########### communication_protocols ###########
-                if self.args.communication_protocol in ['Quantization','Topk']:
+                if self.args.communication.communication_protocol in ['Quantization','Topk']:
                     pred_detach = compress_pred( self.args ,pred_detach , self.parties[ik].local_gradient,\
-                                    self.current_epoch, self.current_step).to(self.args.device)
+                                    self.current_epoch, self.current_step).to(self.args.runtime.device)
                 ########### communication_protocols ###########
-                pred_clone = torch.autograd.Variable(pred_detach, requires_grad=True).to(self.args.device)
+                pred_clone = torch.autograd.Variable(pred_detach, requires_grad=True).to(self.args.runtime.device)
                 
                 self.communication_cost += get_size_of(pred_clone) #MB
                 
@@ -147,7 +146,7 @@ class MainTaskVFL(object):
         # ====== normal vertical federated learning ======
         torch.autograd.set_detect_anomaly(True)
         # ======== Commu ===========
-        if self.args.communication_protocol in ['Vanilla','FedBCD_p','Quantization','Topk'] or self.Q ==1 : # parallel FedBCD & noBCD situation
+        if self.args.communication.communication_protocol in ['Vanilla','FedBCD_p','Quantization','Topk'] or self.Q ==1 : # parallel FedBCD & noBCD situation
             
             # exchange info between parties
             self.pred_transmit() 
@@ -181,7 +180,7 @@ class MainTaskVFL(object):
                         cloned_tensor.requires_grad_(True)
                         
                         # Move the tensor to the device
-                        cuda_tensor = cloned_tensor.to(self.args.device)
+                        cuda_tensor = cloned_tensor.to(self.args.runtime.device)
                         
                         # Append the processed tensor to the list
                         updated_pred_received.append(cuda_tensor)
@@ -196,7 +195,7 @@ class MainTaskVFL(object):
                 # for passive party, do local update without info exchange
                 for ik in range(self.k-1):
                     _pred, _pred_clone= self.parties[ik].give_pred()
-                    self.parties[ik].pred_received[ik] = _pred_clone.requires_grad_(True).to(self.args.device)
+                    self.parties[ik].pred_received[ik] = _pred_clone.requires_grad_(True).to(self.args.runtime.device)
                     self.parties[ik].update_local_gradient_BCD(gt_one_hot_label)
 
                     self.parties[ik].local_backward()
@@ -208,7 +207,7 @@ class MainTaskVFL(object):
                 self.parties[self.k-1].global_backward()
                 self.parties[self.k-1].local_backward()
             
-        elif self.args.communication_protocol in ['CELU']:
+        elif self.args.communication.communication_protocol in ['CELU']:
             for q in range(self.Q):
                 if (q == 0) or (batch_label.shape[0] != self.args.batch_size): 
                     # exchange info between parties
@@ -256,7 +255,7 @@ class MainTaskVFL(object):
                         self.parties[ik].prev_batches = self.parties[ik].prev_batches[1:]#[-(num_batch_per_workset - 1):]
                         self.parties[ik].num_local_updates += 1
 
-        elif self.args.communication_protocol in ['FedBCD_s']: # Sequential FedBCD_s
+        elif self.args.communication.communication_protocol in ['FedBCD_s']: # Sequential FedBCD_s
             for q in range(self.Q):
                 if q == 0: 
                     #first iteration, active party gets pred from passsive party
@@ -341,18 +340,14 @@ class MainTaskVFL(object):
                 self.num_total_comms = self.num_total_comms + 1
                 if self.num_total_comms % 10 == 0:
                     print(f"total time for {self.num_total_comms} communication is {total_time}")
-                # if self.train_acc[-1] > STOPPING_ACC[str(self.args.dataset)] and flag == 0:
-                #     self.stopping_time = total_time
-                #     self.stopping_iter = self.num_total_comms
-                #     self.stopping_commu_cost = self.communication_cost
-                #     flag = 1
+
 
                 self.current_step = self.current_step + 1
             
             self.loss.append(loss / float(sample_cnt))
             self.train_acc.append(suc_cnt / float(sample_cnt))
             self.trained_models = self.save_state(True)
-            if self.args.save_model == True:
+            if self.args.runtime.save_model == True:
                 self.save_trained_models()
 
             # LR decay
@@ -412,7 +407,7 @@ class MainTaskVFL(object):
         self.final_state.update(self.save_party_data()) 
         
 
-        return self.test_acc[-1],self.stopping_iter,self.stopping_time,self.stopping_commu_cost
+        return self.test_acc[-1]
 
     def save_state(self, BEFORE_MODEL_UPDATE=True):
         if BEFORE_MODEL_UPDATE:
@@ -450,11 +445,11 @@ class MainTaskVFL(object):
             "train_loader": [copy.deepcopy(self.parties[ik].train_loader) for ik in range(self.k)],
             "test_loader": [copy.deepcopy(self.parties[ik].test_loader) for ik in range(self.k)],
             "batchsize": self.args.batch_size,
-            "num_classes": self.args.num_classes
+            "num_classes": self.args.dataset.num_classes
         }
                
     def save_trained_models(self):
-        dir_path = self.exp_res_dir + f'trained_models/parties{self.k}_topmodel{self.args.apply_trainable_layer}_epoch{self.epochs}/'
+        dir_path = self.exp_res_dir + f'trained_models/parties{self.k}_topmodel{self.args.global_model.apply_trainable_layer}_epoch{self.epochs}/'
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
         if self.args.apply_defense:

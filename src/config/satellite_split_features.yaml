@@ -1,0 +1,9 @@
+defaults:
+  - satellite_default_config  # Import the default configuration
+
+k : 3
+
+dataset:
+  dataset_name: satellite
+  num_classes: 4
+  features_instead : True

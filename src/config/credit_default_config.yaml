@@ -1,0 +1,43 @@
+
+hydra:
+  job:
+    chdir: False
+    # This is the default configuration for Hydra, which is to keep the working directory as the root of the project.
+
+defaults:
+  - dataset: credit
+  - model: mlp4_credit
+
+epochs: 5
+lr: 0.003
+batch_size: 256
+early_stop_threshold: 5
+k: 2
+
+communication:
+  communication_protocol: FedSGD
+  iteration_per_aggregation: 1
+
+dataset:
+  dataset_name: credit
+  num_classes: 2
+  num_features: 11
+
+global_model:
+  apply_trainable_layer: 1
+  model: ClassificationModelHostTrainableHead
+
+model_list:  # Default to a single model, can be overridden by a list of models
+  - input_dim: 11
+    output_dim: 2
+    type: MLP4_Credit
+  - input_dim: 12
+    output_dim: 2
+    type: MLP4_Credit
+
+runtime:
+  device: cuda
+  gpu: 0
+  seed: 97
+  n_seeds: 1
+  save_model: False

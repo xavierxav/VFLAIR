@@ -101,7 +101,7 @@ class Party(object):
         return (self.local_model_optimizer.state_dict()['param_groups'][0]['lr'])
 
     def LR_decay(self,i_epoch):
-        eta_0 = self.args.main_lr
+        eta_0 = self.args.lr
         eta_t = eta_0/(np.sqrt(i_epoch+1))
         for param_group in self.local_model_optimizer.param_groups:
             param_group['lr'] = eta_t 
