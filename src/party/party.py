@@ -50,7 +50,6 @@ class Party(object):
 
         self.local_gradient = None
         self.local_pred = None
-        self.local_pred_clone = None
         self.pred_received = []
         for _ in range(args.k):
             self.pred_received.append([])
@@ -59,12 +58,8 @@ class Party(object):
         self.prev_batches = []
         self.num_local_updates = 0
 
-    def give_pred(self):
+    def update_local_pred(self):
         self.local_pred = self.local_model(self.local_batch_data)
-
-        self.local_pred_clone = self.local_pred.detach().clone()
-
-        return self.local_pred, self.local_pred_clone
 
     def prepare_data(self):
         # prepare raw data for training
@@ -81,9 +76,9 @@ class Party(object):
             self.train_data, self.train_label, self.train_attribute = train_dst
             self.test_data, self.test_label, self.test_attribute = test_dst
 
-    def prepare_data_loader(self, batch_size):
-        self.train_loader = DataLoader(self.train_dst, batch_size=batch_size) # , shuffle=True
-        self.test_loader = DataLoader(self.test_dst, batch_size=batch_size) # , shuffle=True
+    def prepare_data_loader(self, batch_size, num_workers=0):
+        self.train_loader = DataLoader(self.train_dst, batch_size=batch_size, num_workers=num_workers, shuffle=True)
+        self.test_loader = DataLoader(self.test_dst, batch_size=batch_size, num_workers=num_workers, shuffle=False)
         if self.train_attribute != None:
             self.attribute_loader = DataLoader(self.train_attribute, batch_size=batch_size)
             self.attribute_iter = iter(self.attribute_loader)
@@ -96,9 +91,6 @@ class Party(object):
             self.global_model,
             self.global_model_optimizer,
         ) = load_basic_models(args, index)
-    
-    def give_current_lr(self):
-        return (self.local_model_optimizer.state_dict()['param_groups'][0]['lr'])
 
     def LR_decay(self,i_epoch):
         eta_0 = self.args.lr
@@ -117,8 +109,8 @@ class Party(object):
         
         # update local model
         self.local_model_optimizer.zero_grad()
-
-        torch.autograd.set_detect_anomaly(True)
+        if self.args.runtime.detect_anomaly:
+            torch.autograd.set_detect_anomaly(True)
         if weight != None: # CELU
             ins_batch_cached_grad = torch.mul(weight.unsqueeze(1),self.local_gradient)
             self.weights_grad_a = torch.autograd.grad(

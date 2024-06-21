@@ -47,8 +47,7 @@ from utils.basic_functions import (fetch_data_and_label,
                                    get_class_i, get_labeled_data,
                                    label_to_one_hot)
 
-# DATA_PATH ='./load/share_dataset/'  #'../../../share_dataset/'
-DATA_PATH ='load/share_dataset/'
+DATA_PATH ='../data/'
 IMAGE_DATA = ['mnist', 'cifar10', 'cifar100', 'cifar20', 'utkface', 'facescrub', 'places365']
 TABULAR_DATA = ['breast_cancer_diagnose','diabetes','adult_income','criteo','credit','nursery','avazu']
 GRAPH_DATA = ['cora']

@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 
 import hydra
 from omegaconf import DictConfig , OmegaConf
-from config_models import Config
+from src.config.config_models import Config
 
 def set_seed(seed=0):
     """
@@ -78,57 +78,65 @@ def load_configs(cfg: Config):
 
     return args_list
 
+def process_seed_iteration(args, seed):
+    accuracy = []
+    loss_accuracy = []
+
+    args.runtime.current_seed = seed
+    set_seed(seed)
+    print(f'================= iter seed {seed} =================')
+    if args.runtime.device == 'cuda':
+        torch.cuda.set_device(args.runtime.gpu)
+        print(f'running on cuda {torch.cuda.current_device()}')
+    else:
+        print('running on cpu')
+
+    print(f'============ apply_trainable_layer={args.global_model.apply_trainable_layer} ============')
+    print(f'case : {args.case}')
+
+    if args.dataset.dataset_name == 'satellite': # train test splitting of POIs
+        data = pd.read_csv(os.path.join(args.dataset.data_root, 'metadata.csv'))
+        # rename 1st column to 'POI'
+        data = data.rename(columns={data.columns[0]: 'POI'})
+        data = data.loc[data['POI'] != 'ASMSpotter-1-1-1']
+        # split the POI between train and test
+        POI = data['POI'].unique()
+
+        args.dataset.train_POI, args.dataset.test_POI = train_test_split(POI, test_size=0.2, random_state=args.runtime.current_seed, shuffle=True)
+        args.dataset.train_POI, args.dataset.test_POI = set(args.dataset.train_POI), set(args.dataset.test_POI)
+    
+    args = load_parties(args)
+
+    # Evaluate the model and collect results
+    set_seed(args.runtime.current_seed)
+
+    vfl = MainTaskVFL(args)
+    vfl.train()
+
+    loss_accuracy.append([
+        vfl.loss[-1], 
+        vfl.train_acc[-1], 
+        vfl.test_acc[-1], 
+        vfl.test_auc[-1]
+    ])
+    accuracy.append(vfl.test_acc)
+    
+    return loss_accuracy, accuracy
+#TODO: Add the logic to process the args_list
 def process_args_list(args_list):
     loss_accuracy_list = []
     accuracy_list = []
     for args in args_list:
-        accuracy = []
-        loss_accuracy = []
+        all_accuracy = []
+        all_loss_accuracy = []
         for seed in range(args.runtime.seed, args.runtime.seed + args.runtime.n_seeds):
-            args.runtime.current_seed = seed
-            set_seed(seed)
-            print(f'================= iter seed {seed} =================')
-            if args.runtime.device == 'cuda':
-                torch.cuda.set_device(args.runtime.gpu)
-                print(f'running on cuda {torch.cuda.current_device()}')
-            else:
-                print('running on cpu')
-
-            print(f'============ apply_trainable_layer={args.global_model.apply_trainable_layer} ============')
-            print(f'case : {args.case}')
-
-            if args.dataset == 'satellite': # train test splitting of POIs
-                data = pd.read_csv(args.dataset.data_root + r'\metadata.csv')
-                #rename 1st column to 'POI'
-                data = data.rename(columns={data.columns[0]: 'POI'})
-                data = data.loc[data['POI'] != 'ASMSpotter-1-1-1']
-                #split the POI between train and test
-                POI = data['POI'].unique()
-
-                args.dataset.train_POI, args.dataset.test_POI = train_test_split(POI, test_size=0.2, random_state=args.runtime.current_seed, shuffle=True)
-                args.dataset.train_POI, args.dataset.test_POI = set(args.dataset.train_POI), set(args.dataset.test_POI)
-            
-            args.exp_res_dir = f'exp_result/{args.dataset.dataset_name}/Q{str(args.communication.iteration_per_aggregation)}/{str(args.global_model.apply_trainable_layer)}/'
-            if not os.path.exists(args.exp_res_dir):
-                os.makedirs(args.exp_res_dir)
-            filename = f'model={args.model_list[0]["type"]}.txt'
-            args.exp_res_path = args.exp_res_dir + filename
-
-            args = load_parties(args)
-
-            # Evaluate the model and collect results
-            args['basic_vfl'], args['main_acc'] = evaluate(args)
-            loss_accuracy.append([
-                args['basic_vfl'].loss[-1], 
-                args['basic_vfl'].train_acc[-1], 
-                args['basic_vfl'].test_acc[-1], 
-                args['basic_vfl'].test_auc[-1]
-            ])
-            accuracy.append(args['basic_vfl'].test_acc)
+            loss_accuracy, accuracy = process_seed_iteration(args, seed)
+            all_loss_accuracy.extend(loss_accuracy)
+            all_accuracy.extend(accuracy)
         
-        loss_accuracy = np.mean(np.array(loss_accuracy), axis=0)
-        loss_accuracy_list.append(loss_accuracy)
-        accuracy_list.append(accuracy)
+        mean_loss_accuracy = np.mean(np.array(all_loss_accuracy), axis=0)
+        loss_accuracy_list.append(mean_loss_accuracy)
+        accuracy_list.append(all_accuracy)
 
     print('================= Final Results averaged over seeds =================')
     for i, args in enumerate(args_list):
@@ -142,15 +150,9 @@ def evaluate(args):
     set_seed(args.runtime.current_seed)
 
     vfl = MainTaskVFL(args)
-    if args.dataset.dataset_name not in ['cora']:
-        
-        main_acc = vfl.train()
-    else:
-        main_acc = vfl.train_graph()
+    vfl.train()
 
-    # Save record 
-
-    return vfl, main_acc
+    return vfl
 
 if __name__ == '__main__':
     main()

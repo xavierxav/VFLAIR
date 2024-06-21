@@ -19,6 +19,7 @@ class ItemAccessibleModel(BaseModel):
 class CommunicationConfig(ItemAccessibleModel):
     communication_protocol: Annotated[str, Field(pattern='^(FedBCD_p|FedSGD)$')]
     iteration_per_aggregation: Annotated[int, Field(ge=1)] = 1
+    get_communication_size: Optional[bool] = False
     # quant_level: Optional[Annotated[int, Field(ge=0)]] = None
     # vecdim: Optional[Annotated[int, Field(ge=1)]] = None
     # num_update_per_batch: Optional[Annotated[int, Field(ge=1)]] = None
@@ -28,14 +29,17 @@ class CommunicationConfig(ItemAccessibleModel):
 class DatasetConfig(ItemAccessibleModel):
     dataset_name: str
     num_classes: Annotated[int, Field(ge=1)] = 10
-    data_root: Optional[str] = None
-    features_instead : Optional[bool] = False
+    data_root: Optional[str] = r'C:\Users\XD278777\Desktop\VFLAIR_light\data\satellite_dataset'
+    features_instead : Optional[str] = None
+    transform: Optional[bool] = True
+    cloud_cover_ranking: Optional[bool] = False
 
 class ModelConfig(ItemAccessibleModel):
     input_dim: Annotated[int, Field(ge=1)]
     output_dim: Annotated[int, Field(ge=1)]
     type: str
     path: Optional[str] = None
+    weight_decay: Optional[float] = 0.0
 
 class RuntimeConfig(ItemAccessibleModel):
     device: Annotated[str, Field(pattern='^(cuda|cpu)$')]
@@ -44,10 +48,12 @@ class RuntimeConfig(ItemAccessibleModel):
     n_seeds: Annotated[int, Field(ge=1)] = 1
     current_seed: Optional[int] = 97
     save_model: bool = False
+    detect_anomaly: Optional[bool] = False
 
 class GlobalModelConfig(ItemAccessibleModel):
     apply_trainable_layer: Annotated[int, Field(ge=0, le=1)] = 1
     model: str
+    weight_decay: Optional[float] = 0.0
 
 class Config(ItemAccessibleModel):
     epochs: Annotated[int, Field(ge=1)] = 10

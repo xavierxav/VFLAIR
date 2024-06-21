@@ -13,8 +13,8 @@ class PassiveParty(Party):
 
     def prepare_data(self):
         if self.args.dataset.dataset_name == 'satellite':
-            self.train_dst = SatelliteDataset(test_train_POI = self.args.dataset.train_POI , index = self.index , root = self.args.data_root)
-            self.test_dst = SatelliteDataset(test_train_POI = self.args.dataset.test_POI , index = self.index , root = self.args.data_root)
+            self.train_dst = SatelliteDataset(dataset_dict = self.args.dataset , index = self.index , train = True)
+            self.test_dst = SatelliteDataset(dataset_dict = self.args.dataset , index = self.index , train = False)
         else:
             super().prepare_data()
             self.train_dst = PassiveDataset(self.train_data)

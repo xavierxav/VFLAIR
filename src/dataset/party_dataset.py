@@ -4,6 +4,7 @@ import pandas as pd
 import tifffile as tiff
 import os
 from torchvision import transforms
+import numpy as np
 
 
 SatteliteLABELS = {'Amnesty POI' : 0 , 'ASMSpotter' : 1 , 'Landcover' : 2 , 'UNHCR' : 3}
@@ -42,19 +43,24 @@ class ActiveDataset(Dataset):
 
 
 class SatelliteDataset(Dataset):
-    def __init__(self, test_train_POI , csv_file = r'\metadata.csv', index = 0, root = r'C:\Users\XD278777\Desktop\worldstrat\dataset', transform=normalize):
-        
-        self.index = index
-        self.root = os.path.normpath(root)
-        self.transform = transform
+    def __init__(self, dataset_dict, index = 0, train = True):
 
-        self.data = self.metadata( os.path.normpath(csv_file) , test_train_POI)
+        self.index = index
+        self.root = os.path.normpath(dataset_dict.data_root)
+        self.transform = (normalize if dataset_dict.transform else None)
+        self.feature_instead = dataset_dict.features_instead
+
+        if train:
+            self.data = self.metadata( dataset_dict.train_POI, cloud_cover = dataset_dict.cloud_cover_ranking)
+        else:
+            self.data = self.metadata( dataset_dict.test_POI, cloud_cover = dataset_dict.cloud_cover_ranking)
 
     def __len__(self):
         return len(self.data)
     
-    def metadata(self, csv_file, test_train_POI, cloud_cover = False):
-        data = pd.read_csv(self.root + csv_file)
+    def metadata(self, test_train_POI, cloud_cover = False):
+        csv_file = 'metadata.csv'
+        data = pd.read_csv( os.path.join(self.root, csv_file) )
         
         # Rename 1st column to 'POI'
         data = data.rename(columns={data.columns[0]: 'POI'})
@@ -91,7 +97,12 @@ class SatelliteDataset(Dataset):
 
 
     def __getitem__(self, idx):
-        img_path = self.root + '\\lr_dataset\\' + self.data.at[idx, 'POI'] + '\L2A\\' + self.data.at[idx, 'POI'] + '-' + str(self.data.at[idx, 'n']) + '-' + 'L2A_data.tiff'
+        if self.feature_instead is not None:
+            features_path = os.path.join(self.root, self.feature_instead, self.data.at[idx, 'POI'], 'L2A', f"{self.data.at[idx, 'POI']}-{self.data.at[idx, 'n']}-L2A_data_class_token.npy")
+            features = np.load(features_path).flatten()
+            return torch.tensor(features, dtype=torch.float32), 0
+
+        img_path = os.path.join(self.root, 'lr_dataset', self.data.at[idx, 'POI'], 'L2A', f"{self.data.at[idx, 'POI']}-{self.data.at[idx, 'n']}-L2A_data.tiff")
         image = torch.tensor(tiff.imread(img_path), dtype=torch.float32)
         if image.shape[-1] != 12:
             raise ValueError("Expected image with 12 channels")
@@ -102,8 +113,8 @@ class SatelliteDataset(Dataset):
         return image , 0
     
 class ActiveSatelliteDataset(SatelliteDataset):
-    def __init__(self, test_train_POI , csv_file = r'\metadata.csv', index = 0, root = r'C:\Users\XD278777\Desktop\worldstrat\dataset', transform=None):
-        super().__init__(test_train_POI, csv_file, index, root, transform)
+    def __init__(self, dataset_dict, index = 0, train = True):
+        super().__init__(dataset_dict, index, train)
         self.labels = self.data['POI'].apply(lambda x: SatteliteLABELS[x.split('-')[0]])
         
     def __getitem__(self, idx):

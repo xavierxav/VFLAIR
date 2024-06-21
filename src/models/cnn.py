@@ -92,22 +92,40 @@ class LeNet_LeCun(nn.Module):
         # print(f"[debug] in LeNet_LeCun, fc.out.shape={out.shape}")
         return out
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 class SatelliteCNN(nn.Module):
-    def __init__(self, output_dim=10):
+    def __init__(self, output_dim=10, conv_dropout_prob=0.4, fc_dropout_prob=0.):
         super(SatelliteCNN, self).__init__()
         self.output_dim = output_dim
+        
+        # Convolutional layers
         self.conv1 = nn.Conv2d(12, 32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
         self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        
+        # Pooling layer
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
+        
+        # Dropout layers
+        self.conv_dropout = nn.Dropout2d(conv_dropout_prob)  # Dropout for convolutional layers
+        self.fc_dropout = nn.Dropout(fc_dropout_prob)  # Dropout for fully connected layers
+        
+        # Fully connected layer
         self.fc1 = nn.Linear(128 * 21 * 21, self.output_dim)  # Adjusted for input size 160x160
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
+        x = self.conv_dropout(x)  # Apply dropout after conv1 + relu + pool
         x = self.pool(F.relu(self.conv2(x)))
+        x = self.conv_dropout(x)  # Apply dropout after conv2 + relu + pool
         x = self.pool(F.relu(self.conv3(x)))
+        x = self.conv_dropout(x)  # Apply dropout after conv3 + relu + pool
         x = x.view(-1, 128 * 21 * 21)  # Adjusted for input size 160x160
         x = F.relu(self.fc1(x))
+        x = self.fc_dropout(x)  # Apply dropout after fc1 + relu
         return x
 
 

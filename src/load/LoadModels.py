@@ -24,7 +24,7 @@ def load_basic_models(args,index):
         local_model = globals()[current_model_type](current_input_dim, current_output_dim)
     local_model = local_model.to(args.runtime.device)
     print(f"local_model parameters: {sum(p.numel() for p in local_model.parameters())}")
-    local_model_optimizer = torch.optim.Adam(list(local_model.parameters()), lr=current_lr, weight_decay=0.0)
+    local_model_optimizer = torch.optim.Adam(list(local_model.parameters()), lr=current_lr, weight_decay= args.model_list[index].weight_decay)
         
     global_model = None
     global_model_optimizer = None
@@ -40,7 +40,7 @@ def load_basic_models(args,index):
                 global_input_dim += args.model_list[ik]['output_dim']
             global_model = globals()[args.global_model.model](global_input_dim, args.dataset.num_classes)
             global_model = global_model.to(args.runtime.device)
-            global_model_optimizer = torch.optim.Adam(list(global_model.parameters()), lr=args.lr)
+            global_model_optimizer = torch.optim.Adam(list(global_model.parameters()), lr=args.lr, weight_decay= args.global_model.weight_decay )
             # print(f"use SGD for global optimizer for PMC checking")
             # global_model_optimizer = torch.optim.SGD(list(global_model.parameters()), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 

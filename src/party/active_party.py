@@ -2,11 +2,9 @@ import sys, os
 sys.path.append(os.pardir)
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
 from party.party import Party
 from utils.basic_functions import cross_entropy_for_onehot
 from dataset.party_dataset import ActiveDataset , ActiveSatelliteDataset
-from sys import getsizeof
 
 class ActiveParty(Party):
     def __init__(self, args, index):
@@ -20,8 +18,8 @@ class ActiveParty(Party):
 
     def prepare_data(self):
         if self.args.dataset.dataset_name == 'satellite':
-            self.train_dst = ActiveSatelliteDataset(test_train_POI = self.args.dataset.train_POI , index = self.index , root = self.args.data_root)
-            self.test_dst = ActiveSatelliteDataset(test_train_POI = self.args.dataset.test_POI , index = self.index , root = self.args.data_root)
+            self.train_dst = ActiveSatelliteDataset(dataset_dict = self.args.dataset , index = self.index , train = True)
+            self.test_dst = ActiveSatelliteDataset(dataset_dict = self.args.dataset , index = self.index , train = False)
         else:
             super().prepare_data()
             self.train_dst = ActiveDataset(self.train_data, self.train_label)
@@ -33,14 +31,11 @@ class ActiveParty(Party):
         return pred, loss
 
     def gradient_calculation(self, pred_list, loss):
-        pred_gradients_list = []
         pred_gradients_list_clone = []
         for ik in range(self.args.k):
-            pred_gradients_list.append(torch.autograd.grad(loss, pred_list[ik], retain_graph=True, create_graph=True))
-            # print(f"in gradient_calculation, party#{ik}, loss={loss}, pred_gradeints={pred_gradients_list[-1]}")
-            pred_gradients_list_clone.append(pred_gradients_list[ik][0].detach().clone())
-        # self.global_backward(pred, loss)
-        return pred_gradients_list, pred_gradients_list_clone
+            pred_gradients = torch.autograd.grad(loss, pred_list[ik], retain_graph=True, create_graph=True)
+            pred_gradients_list_clone.append(pred_gradients[0].detach().clone())
+        return pred_gradients_list_clone
     
     def give_gradient(self):
         pred_list = self.pred_received 
@@ -48,7 +43,11 @@ class ActiveParty(Party):
         assert self.gt_one_hot_label is not None, 'give gradient:self.gt_one_hot_label == None'
 
         self.global_pred, self.global_loss = self.aggregate(pred_list, self.gt_one_hot_label)
-        pred_gradients_list, pred_gradients_list_clone = self.gradient_calculation(pred_list, self.global_loss)
+        
+        pred_gradients_list_clone = []
+        for ik in range(self.args.k):
+            pred_gradients = torch.autograd.grad(self.global_loss, pred_list[ik], retain_graph=True, create_graph=True)
+            pred_gradients_list_clone.append(pred_gradients[0].detach().clone())
         
         return pred_gradients_list_clone
 
