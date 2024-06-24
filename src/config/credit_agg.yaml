@@ -1,6 +1,0 @@
-defaults:
-  - credit_default_config  # Import the default configuration
-
-global_model:
-  apply_trainable_layer: 0
-  model: ClassificationModelHostHead

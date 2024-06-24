@@ -73,10 +73,34 @@ def load_configs(cfg: Config):
             single_cfg.k = 1
             single_cfg['case'] = f'single_party_{ik}'
             single_cfg['data_split'] = [input_dim, input_dim + single_cfg.model_list[0].input_dim]
+            single_cfg['index'] = ik
             input_dim += single_cfg.model_list[0].input_dim
             args_list.append(single_cfg)
 
     return args_list
+
+#TODO: Add the logic to process the args_list
+def process_args_list(args_list):
+    loss_accuracy_list = []
+    accuracy_list = []
+    for args in args_list:
+        all_accuracy = []
+        all_loss_accuracy = []
+        for seed in range(args.runtime.seed, args.runtime.seed + args.runtime.n_seeds):
+            loss_accuracy, accuracy = process_seed_iteration(args, seed)
+            all_loss_accuracy.extend(loss_accuracy)
+            all_accuracy.extend(accuracy)
+        
+        mean_loss_accuracy = np.mean(np.array(all_loss_accuracy), axis=0)
+        loss_accuracy_list.append(mean_loss_accuracy)
+        accuracy_list.append(all_accuracy)
+
+    print('================= Final Results averaged over seeds =================')
+    for i, args in enumerate(args_list):
+        print(f'case {args["case"]} \t train_loss:{loss_accuracy_list[i][0]:.4f} \t train_acc:{loss_accuracy_list[i][1]:.4f} \t test_acc:{loss_accuracy_list[i][2]:.4f} \t test_auc:{loss_accuracy_list[i][3]:.4f}')
+    
+    cases_list = [args['case'] for args in args_list]
+    plot_model_performance(cases_list, np.array(accuracy_list))
 
 def process_seed_iteration(args, seed):
     accuracy = []
@@ -95,7 +119,7 @@ def process_seed_iteration(args, seed):
     print(f'case : {args.case}')
 
     if args.dataset.dataset_name == 'satellite': # train test splitting of POIs
-        data = pd.read_csv(os.path.join(args.dataset.data_root, 'metadata.csv'))
+        data = pd.read_csv(os.path.join(args.dataset.data_root, 'satellite_dataset' , 'metadata.csv'))
         # rename 1st column to 'POI'
         data = data.rename(columns={data.columns[0]: 'POI'})
         data = data.loc[data['POI'] != 'ASMSpotter-1-1-1']
@@ -122,37 +146,6 @@ def process_seed_iteration(args, seed):
     accuracy.append(vfl.test_acc)
     
     return loss_accuracy, accuracy
-#TODO: Add the logic to process the args_list
-def process_args_list(args_list):
-    loss_accuracy_list = []
-    accuracy_list = []
-    for args in args_list:
-        all_accuracy = []
-        all_loss_accuracy = []
-        for seed in range(args.runtime.seed, args.runtime.seed + args.runtime.n_seeds):
-            loss_accuracy, accuracy = process_seed_iteration(args, seed)
-            all_loss_accuracy.extend(loss_accuracy)
-            all_accuracy.extend(accuracy)
-        
-        mean_loss_accuracy = np.mean(np.array(all_loss_accuracy), axis=0)
-        loss_accuracy_list.append(mean_loss_accuracy)
-        accuracy_list.append(all_accuracy)
-
-    print('================= Final Results averaged over seeds =================')
-    for i, args in enumerate(args_list):
-        print(f'case {args["case"]} \t train_loss:{loss_accuracy_list[i][0]:.4f} \t train_acc:{loss_accuracy_list[i][1]:.4f} \t test_acc:{loss_accuracy_list[i][2]:.4f} \t test_auc:{loss_accuracy_list[i][3]:.4f}')
-    
-    cases_list = [args['case'] for args in args_list]
-    plot_model_performance(cases_list, np.array(accuracy_list))
-
-
-def evaluate(args):
-    set_seed(args.runtime.current_seed)
-
-    vfl = MainTaskVFL(args)
-    vfl.train()
-
-    return vfl
 
 if __name__ == '__main__':
     main()

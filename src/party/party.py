@@ -10,26 +10,16 @@ from torch.utils.data import DataLoader
 from load.LoadDataset import load_dataset_per_party
 from load.LoadModels import load_basic_models
 
-from utils.basic_functions import cross_entropy_for_onehot
 from utils.communication_protocol_funcs import Cache
 
-from sys import getsizeof
 
 class Party(object):
-    def __init__(self, args, index):
-        self.name = "party#" + str(index + 1)
+    def __init__(self, args, index, train_dataset, test_dataset):
         self.index = index
         self.args = args
         # data for training and testing
-        self.half_dim = -1
-        self.train_data = None
-        self.test_data = None
-        self.train_label = None
-        self.test_label = None
-        self.train_attribute = None
-        self.test_attribute = None
-        self.train_dst = None
-        self.test_dst = None
+        self.train_dst = train_dataset
+        self.test_dst = test_dataset
         self.train_loader = None
         self.test_loader = None
         self.attribute_loader = None
@@ -42,9 +32,6 @@ class Party(object):
         # global_model
         self.global_model = None
         self.global_model_optimizer = None
-
-
-        self.prepare_data()
         
         self.prepare_model(args, index)
 
@@ -61,27 +48,9 @@ class Party(object):
     def update_local_pred(self):
         self.local_pred = self.local_model(self.local_batch_data)
 
-    def prepare_data(self):
-        # prepare raw data for training
-        (
-            self.args,
-            self.half_dim,
-            train_dst,
-            test_dst,
-        ) = load_dataset_per_party(self.args, self.index)
-        if len(train_dst) == 2:
-            self.train_data, self.train_label = train_dst
-            self.test_data, self.test_label = test_dst
-        elif len(train_dst) == 3:
-            self.train_data, self.train_label, self.train_attribute = train_dst
-            self.test_data, self.test_label, self.test_attribute = test_dst
-
     def prepare_data_loader(self, batch_size, num_workers=0):
         self.train_loader = DataLoader(self.train_dst, batch_size=batch_size, num_workers=num_workers, shuffle=True)
         self.test_loader = DataLoader(self.test_dst, batch_size=batch_size, num_workers=num_workers, shuffle=False)
-        if self.train_attribute != None:
-            self.attribute_loader = DataLoader(self.train_attribute, batch_size=batch_size)
-            self.attribute_iter = iter(self.attribute_loader)
 
     def prepare_model(self, args, index):
         # prepare model and optimizer

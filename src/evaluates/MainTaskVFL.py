@@ -359,18 +359,12 @@ class MainTaskVFL(object):
 
     def save_party_data(self):
         return {
-            "train_data": [copy.deepcopy(self.parties[ik].train_data) for ik in range(self.k)],
-            "test_data": [copy.deepcopy(self.parties[ik].test_data) for ik in range(self.k)],
-            "train_label": [copy.deepcopy(self.parties[ik].train_label) for ik in range(self.k)],
-            "test_label": [copy.deepcopy(self.parties[ik].test_label) for ik in range(self.k)],
-            "train_attribute": [copy.deepcopy(self.parties[ik].train_attribute) for ik in range(self.k)],
-            "test_attribute": [copy.deepcopy(self.parties[ik].test_attribute) for ik in range(self.k)],
             "train_loader": [copy.deepcopy(self.parties[ik].train_loader) for ik in range(self.k)],
             "test_loader": [copy.deepcopy(self.parties[ik].test_loader) for ik in range(self.k)],
             "batchsize": self.args.batch_size,
             "num_classes": self.args.dataset.num_classes
         }
-               
+
     def save_trained_models(self):
         dir_path = self.exp_res_dir + f'trained_models/parties{self.k}_topmodel{self.args.global_model.apply_trainable_layer}_epoch{self.epochs}/'
         if not os.path.exists(dir_path):

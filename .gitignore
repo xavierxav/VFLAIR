@@ -12,11 +12,9 @@ data/
 src/load/share_dataset
 
 # # experiment config files
-src/config/
-# experiment config files
-src/*.yaml
 *.yaml
 *.yml
+/src/config/*.yaml
 
 # experiment result files
 src/exp_result/
@@ -164,3 +162,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+src/config/satellite_default_config.yaml
+src/config/satellite_split_features.yaml

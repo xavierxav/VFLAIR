@@ -9,14 +9,13 @@ import requests
 import torch
 import torch.nn.functional as F
 from matplotlib.ticker import MultipleLocator
-from torchvision import models, datasets, transforms
+from torchvision import transforms
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 import torchvision.transforms as transforms
 from datetime import datetime
 import logging
-import copy
 from sklearn.metrics import roc_auc_score
 tp = transforms.ToTensor()
 

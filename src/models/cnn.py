@@ -97,9 +97,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class SatelliteCNN(nn.Module):
-    def __init__(self, output_dim=10, conv_dropout_prob=0.4, fc_dropout_prob=0.):
+    def __init__(self, output_dim=10, conv_dropout_prob=0., fc_dropout_prob=0. , width=168, height=168):
         super(SatelliteCNN, self).__init__()
         self.output_dim = output_dim
+        self.conv_dropout_prob = conv_dropout_prob
+        self.fc_dropout_prob = fc_dropout_prob
+        self.width = width
+        self.height = height
         
         # Convolutional layers
         self.conv1 = nn.Conv2d(12, 32, kernel_size=3, padding=1)
@@ -114,7 +118,7 @@ class SatelliteCNN(nn.Module):
         self.fc_dropout = nn.Dropout(fc_dropout_prob)  # Dropout for fully connected layers
         
         # Fully connected layer
-        self.fc1 = nn.Linear(128 * 21 * 21, self.output_dim)  # Adjusted for input size 160x160
+        self.fc1 = nn.Linear(128 * self.width//8 * self.height//8, output_dim)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
@@ -123,7 +127,7 @@ class SatelliteCNN(nn.Module):
         x = self.conv_dropout(x)  # Apply dropout after conv2 + relu + pool
         x = self.pool(F.relu(self.conv3(x)))
         x = self.conv_dropout(x)  # Apply dropout after conv3 + relu + pool
-        x = x.view(-1, 128 * 21 * 21)  # Adjusted for input size 160x160
+        x = x.view(-1, 128 * self.width//8 * self.height//8)
         x = F.relu(self.fc1(x))
         x = self.fc_dropout(x)  # Apply dropout after fc1 + relu
         return x

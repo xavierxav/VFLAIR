@@ -27,9 +27,9 @@ class CommunicationConfig(ItemAccessibleModel):
     # ratio: Optional[Annotated[float, Field(ge=0, le=1)]] = None
 
 class DatasetConfig(ItemAccessibleModel):
-    dataset_name: str
+    dataset_name: Annotated[str, Field(pattern='^(satellite|credit)$')]
     num_classes: Annotated[int, Field(ge=1)] = 10
-    data_root: Optional[str] = r'C:\Users\XD278777\Desktop\VFLAIR_light\data\satellite_dataset'
+    data_root: Optional[str] = r'C:\Users\XD278777\Desktop\VFLAIR_light\data'
     features_instead : Optional[str] = None
     transform: Optional[bool] = True
     cloud_cover_ranking: Optional[bool] = False

@@ -7,23 +7,14 @@ from utils.basic_functions import cross_entropy_for_onehot
 from dataset.party_dataset import ActiveDataset , ActiveSatelliteDataset
 
 class ActiveParty(Party):
-    def __init__(self, args, index):
-        super().__init__(args, index)
+    def __init__(self, args, index, train_dataset, test_dataset):
+        super().__init__(args, index, train_dataset, test_dataset)
         
         self.gt_one_hot_label = None
         
         self.global_pred = None
         self.global_loss = None
         self.criterion = cross_entropy_for_onehot
-
-    def prepare_data(self):
-        if self.args.dataset.dataset_name == 'satellite':
-            self.train_dst = ActiveSatelliteDataset(dataset_dict = self.args.dataset , index = self.index , train = True)
-            self.test_dst = ActiveSatelliteDataset(dataset_dict = self.args.dataset , index = self.index , train = False)
-        else:
-            super().prepare_data()
-            self.train_dst = ActiveDataset(self.train_data, self.train_label)
-            self.test_dst = ActiveDataset(self.test_data, self.test_label)
 
     def aggregate(self, pred_list, gt_one_hot_label):
         pred = self.global_model(pred_list)

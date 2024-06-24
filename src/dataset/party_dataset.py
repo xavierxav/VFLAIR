@@ -43,66 +43,22 @@ class ActiveDataset(Dataset):
 
 
 class SatelliteDataset(Dataset):
-    def __init__(self, dataset_dict, index = 0, train = True):
-
-        self.index = index
-        self.root = os.path.normpath(dataset_dict.data_root)
+    def __init__(self, dataset_dict, metadata):
+        self.metadata = metadata
+        self.root = dataset_dict.data_root
         self.transform = (normalize if dataset_dict.transform else None)
         self.feature_instead = dataset_dict.features_instead
 
-        if train:
-            self.data = self.metadata( dataset_dict.train_POI, cloud_cover = dataset_dict.cloud_cover_ranking)
-        else:
-            self.data = self.metadata( dataset_dict.test_POI, cloud_cover = dataset_dict.cloud_cover_ranking)
-
     def __len__(self):
-        return len(self.data)
-    
-    def metadata(self, test_train_POI, cloud_cover = False):
-        csv_file = 'metadata.csv'
-        data = pd.read_csv( os.path.join(self.root, csv_file) )
-        
-        # Rename 1st column to 'POI'
-        data = data.rename(columns={data.columns[0]: 'POI'})
-        
-        # Filter by POI
-        data = data.loc[data['POI'].isin(test_train_POI)]
-        
-        if cloud_cover:
-            # Sort data by 'cloud_cover' within each 'POI'
-            data = data.sort_values(by=['POI', 'cloud_cover'])
-        else:
-            # Sort data by 'n' within each 'POI'
-            data = data.sort_values(by=['POI', 'n'])
-        
-        # Group by 'POI' and pick the appropriate row based on self.index
-        def pick_image(group):
-            if self.index is not None:
-
-                return group.iloc[self.index]
-            else:
-                return group  # Return all rows if self.index is None
-        
-        # Apply the pick_image function to each group
-        data = data.groupby('POI').apply(pick_image).reset_index(drop=True)
-        
-        # Ensure 'POI' column is ordered according to test_train_POI
-        data['POI'] = pd.Categorical(data['POI'], categories=test_train_POI, ordered=True)
-        
-        # Sort data by 'POI' to maintain the order specified in test_train_POI
-        data = data.sort_values('POI')
-        
-        return data.reset_index(drop=True)
-
-
+        return len(self.metadata['POI'].unique())
 
     def __getitem__(self, idx):
         if self.feature_instead is not None:
-            features_path = os.path.join(self.root, self.feature_instead, self.data.at[idx, 'POI'], 'L2A', f"{self.data.at[idx, 'POI']}-{self.data.at[idx, 'n']}-L2A_data_class_token.npy")
+            features_path = os.path.join(self.root, self.feature_instead, self.metadata.at[idx, 'POI'], 'L2A', f"{self.metadata.at[idx, 'POI']}-{self.metadata.at[idx, 'n']}-L2A_data_class_token.npy")
             features = np.load(features_path).flatten()
             return torch.tensor(features, dtype=torch.float32), 0
 
-        img_path = os.path.join(self.root, 'lr_dataset', self.data.at[idx, 'POI'], 'L2A', f"{self.data.at[idx, 'POI']}-{self.data.at[idx, 'n']}-L2A_data.tiff")
+        img_path = os.path.join(self.root, 'satellite_dataset' , 'lr_dataset' , self.metadata.at[idx, 'POI'] , 'L2A' , f"{self.metadata.at[idx, 'POI']}-{self.metadata.at[idx, 'n']}-L2A_data.tiff")
         image = torch.tensor(tiff.imread(img_path), dtype=torch.float32)
         if image.shape[-1] != 12:
             raise ValueError("Expected image with 12 channels")
@@ -113,9 +69,9 @@ class SatelliteDataset(Dataset):
         return image , 0
     
 class ActiveSatelliteDataset(SatelliteDataset):
-    def __init__(self, dataset_dict, index = 0, train = True):
-        super().__init__(dataset_dict, index, train)
-        self.labels = self.data['POI'].apply(lambda x: SatteliteLABELS[x.split('-')[0]])
+    def __init__(self, dataset_dict, metadata):
+        super().__init__(dataset_dict, metadata)
+        self.labels = self.metadata['POI'].apply(lambda x: SatteliteLABELS[x.split('-')[0]])
         
     def __getitem__(self, idx):
         image = super().__getitem__(idx)[0]
