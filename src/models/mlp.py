@@ -3,12 +3,13 @@ sys.path.append(os.pardir)
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
  
     
 class MLP2_ReLu(nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, local_model_dict):
         super(MLP2_ReLu, self).__init__()
+        input_dim = local_model_dict['input_dim']
+        output_dim = local_model_dict['output_dim']
         self.layer1 = nn.Sequential(
             nn.Flatten(),
             nn.Linear(input_dim, 32, bias=True),
@@ -27,8 +28,10 @@ class MLP2_ReLu(nn.Module):
         return x
 
 class MLP2(nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, local_model_dict):
         super(MLP2, self).__init__()
+        input_dim = local_model_dict['input_dim']
+        output_dim = local_model_dict['output_dim']
         self.layer1 = nn.Sequential(
             nn.Flatten(),
             nn.Linear(input_dim, 32, bias=True),
@@ -51,8 +54,10 @@ class MLP2(nn.Module):
 
 # for BreastCancer dataset
 class MLP2_128(nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, local_model_dict):
         super(MLP2_128, self).__init__()
+        input_dim = local_model_dict['input_dim']
+        output_dim = local_model_dict['output_dim']
         self.layer1 = nn.Sequential(
             nn.Linear(input_dim, 128, bias=True),
             nn.ReLU(inplace=True)
@@ -94,8 +99,10 @@ class MLP2_scalable(nn.Module):
 
 # for Attribute Inference attack with language/text data
 class MLP4_dropout(nn.Module):
-    def __init__(self, input_dim, output_dim):
-        super(MLP3_dropout, self).__init__()
+    def __init__(self, local_model_dict):
+        super(MLP4_dropout, self).__init__()
+        input_dim = local_model_dict['input_dim']
+        output_dim = local_model_dict['output_dim']
         self.drop_out_rate = 0.2
         self.layer1 = nn.Sequential(
             nn.Linear(input_dim, 256, bias=False),
@@ -137,8 +144,10 @@ class MLP4_dropout(nn.Module):
         return x
 
 class MLP3(nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, local_model_dict):
         super(MLP3, self).__init__()
+        input_dim = local_model_dict['input_dim']
+        output_dim = local_model_dict['output_dim']
         self.layer1 = nn.Sequential(
             nn.Linear(input_dim, 64, bias=True),
             nn.ReLU(inplace=True)
@@ -167,8 +176,10 @@ class MLP3(nn.Module):
 
 # for Nursery dataset
 class MLP3_Nursery(nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, local_model_dict):
         super(MLP3_Nursery, self).__init__()
+        input_dim = local_model_dict['input_dim']
+        output_dim = local_model_dict['output_dim']
         self.layer = nn.Sequential(
             nn.Linear(input_dim, 200),
             nn.ReLU(),
@@ -183,8 +194,10 @@ class MLP3_Nursery(nn.Module):
 
 # for adult income dataset
 class MLP4(nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, local_model_dict):
         super(MLP4, self).__init__()
+        input_dim = local_model_dict['input_dim']
+        output_dim = local_model_dict['output_dim']
         self.layer = nn.Sequential(
             nn.Linear(input_dim, 64),
             nn.ReLU(),
@@ -203,8 +216,10 @@ class MLP4(nn.Module):
 
 # for Credit dataset
 class MLP4_Credit(nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, local_model_dict):
         super(MLP4_Credit, self).__init__()
+        input_dim = local_model_dict['input_dim']
+        output_dim = local_model_dict['output_dim']
         self.layer = nn.Sequential(
             nn.Linear(input_dim, 100),
             nn.ReLU(),
@@ -241,8 +256,10 @@ class MLP5(nn.Module):
 
 # For avazu and criteo dataset
 class MLP3_256_dense(nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, local_model_dict):
         super(MLP3_256_dense, self).__init__()
+        input_dim = local_model_dict['input_dim']
+        output_dim = local_model_dict['output_dim']
         self.layer = nn.Sequential(
             nn.Linear(input_dim, 256),
             nn.ReLU(),
@@ -257,8 +274,10 @@ class MLP3_256_dense(nn.Module):
 
 # For avazu and criteo dataset
 class MLP3_256_sparse(nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, local_model_dict):
         super(MLP3_256_sparse, self).__init__()
+        input_dim = local_model_dict['input_dim']
+        output_dim = local_model_dict['output_dim']
         self.embeddings = nn.ModuleList([nn.Embedding(1000000, 16) for _ in range(input_dim)])
         self.layer = nn.Sequential(
             nn.Linear(16*input_dim, 256),

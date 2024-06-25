@@ -97,11 +97,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class SatelliteCNN(nn.Module):
-    def __init__(self, output_dim=10, conv_dropout_prob=0., fc_dropout_prob=0. , width=168, height=168):
+    def __init__(self, local_model_dict, width=168, height=168):
         super(SatelliteCNN, self).__init__()
-        self.output_dim = output_dim
-        self.conv_dropout_prob = conv_dropout_prob
-        self.fc_dropout_prob = fc_dropout_prob
+        self.output_dim = local_model_dict['output_dim']
+        self.conv_dropout_prob = local_model_dict['conv_dropout_prob']
+        self.fc_dropout_prob = local_model_dict['fc_dropout_prob']
         self.width = width
         self.height = height
         
@@ -114,11 +114,11 @@ class SatelliteCNN(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
         
         # Dropout layers
-        self.conv_dropout = nn.Dropout2d(conv_dropout_prob)  # Dropout for convolutional layers
-        self.fc_dropout = nn.Dropout(fc_dropout_prob)  # Dropout for fully connected layers
+        self.conv_dropout = nn.Dropout2d(self.conv_dropout_prob)  # Dropout for convolutional layers
+        self.fc_dropout = nn.Dropout(self.fc_dropout_prob)  # Dropout for fully connected layers
         
         # Fully connected layer
-        self.fc1 = nn.Linear(128 * self.width//8 * self.height//8, output_dim)
+        self.fc1 = nn.Linear(128 * self.width//8 * self.height//8, self.output_dim)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))

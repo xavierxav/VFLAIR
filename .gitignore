@@ -164,3 +164,4 @@ dmypy.json
 .pyre/
 src/config/satellite_default_config.yaml
 src/config/satellite_split_features.yaml
+README copy.md

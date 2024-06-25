@@ -20,11 +20,6 @@ class CommunicationConfig(ItemAccessibleModel):
     communication_protocol: Annotated[str, Field(pattern='^(FedBCD_p|FedSGD)$')]
     iteration_per_aggregation: Annotated[int, Field(ge=1)] = 1
     get_communication_size: Optional[bool] = False
-    # quant_level: Optional[Annotated[int, Field(ge=0)]] = None
-    # vecdim: Optional[Annotated[int, Field(ge=1)]] = None
-    # num_update_per_batch: Optional[Annotated[int, Field(ge=1)]] = None
-    # smi_thresh: Optional[Annotated[float, Field(ge=0, le=1)]] = None
-    # ratio: Optional[Annotated[float, Field(ge=0, le=1)]] = None
 
 class DatasetConfig(ItemAccessibleModel):
     dataset_name: Annotated[str, Field(pattern='^(satellite|credit)$')]
@@ -40,6 +35,8 @@ class ModelConfig(ItemAccessibleModel):
     type: str
     path: Optional[str] = None
     weight_decay: Optional[float] = 0.0
+    conv_dropout_prob: Optional[float] = 0.0
+    fc_dropout_prob: Optional[float] = 0.0
 
 class RuntimeConfig(ItemAccessibleModel):
     device: Annotated[str, Field(pattern='^(cuda|cpu)$')]
@@ -59,7 +56,6 @@ class Config(ItemAccessibleModel):
     epochs: Annotated[int, Field(ge=1)] = 10
     lr: Annotated[float, Field(ge=0, le=1)] = 0.001
     batch_size: Annotated[int, Field(ge=1)] = 256
-    early_stop_threshold: Annotated[int, Field(ge=0)] = 5
     k: Annotated[int, Field(ge=1)] = 2
     communication: CommunicationConfig
     dataset: DatasetConfig

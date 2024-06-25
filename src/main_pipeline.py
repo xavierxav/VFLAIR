@@ -2,11 +2,10 @@ import os
 import numpy as np
 import pandas as pd
 
-import random
 import torch
 from load.LoadParty import load_parties
 from evaluates.MainTaskVFL import *
-from utils.basic_functions import plot_model_performance
+from src.utils.basic_functions import plot_model_performance, set_seed
 from sklearn.model_selection import train_test_split
 import warnings
 warnings.filterwarnings("ignore")
@@ -14,22 +13,6 @@ warnings.filterwarnings("ignore")
 import hydra
 from omegaconf import DictConfig , OmegaConf
 from src.config.config_models import Config
-
-def set_seed(seed=0):
-    """
-    Set the seed for reproducibility across various libraries.
-    
-    Parameters:
-    seed (int): The seed value to use for random number generation.
-    """
-    random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
 
 
 @hydra.main(config_path="config", config_name="credit_default_config")
@@ -60,6 +43,7 @@ def load_configs(cfg: Config):
         centralized_cfg.model_list = centralized_cfg.model_list[0]
         centralized_cfg.model_list.input_dim = input_dim
         centralized_cfg.model_list.output_dim = output_dim
+        centralized_cfg.model_list = [centralized_cfg.model_list]
         centralized_cfg.k = 1
         centralized_cfg.case = 'centralized'
         args_list.append(centralized_cfg)
